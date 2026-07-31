@@ -1,0 +1,142 @@
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+}
+
+.panel {
+  width: min(720px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.account-name {
+  margin: 0 0 12px;
+  color: var(--text-h);
+}
+
+.muted {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.auth-form,
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.auth-form input {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--accent-bg);
+  color: var(--text);
+  padding: 10px 12px;
+}
+
+.toggle-row {
+  display: flex;
+  gap: 8px;
+}
+
+button {
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 14px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: white;
+}
+
+button.secondary {
+  background: var(--accent-bg);
+  color: var(--text-h);
+}
+
+button.secondary.active {
+  background: var(--accent);
+  color: white;
+}
+
+button.danger {
+  background: #b42318;
+  color: white;
+}
+
+.game-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.game-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--accent-bg);
+}
+
+.game-date {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  color: var(--text-h);
+}
+
+.game-score {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.error {
+  color: #b42318;
+  margin: 0 0 8px;
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 18px;
+  }
+
+  .panel-header,
+  .game-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

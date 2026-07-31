@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scoreboard Reader</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --void: #0a0d10;
+    --panel: #12161b;
+    --panel-border: #232b33;
+    --amber: #ffb000;
+    --amber-dim: #4a3300;
+    --amber-glow: rgba(255, 176, 0, 0.35);
+    --cyan: #29e6c8;
+    --text: #e8ecef;
+    --text-muted: #7b8792;
+    --danger: #ff5d5d;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at top, #10151b 0%, var(--void) 60%);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px 80px;
+  }
+
+  main {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-family: 'VT323', monospace;
+    font-size: 52px;
+    letter-spacing: 0.03em;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--amber-glow);
+    margin: 0;
+    line-height: 1;
+  }
+
+  h1 span { color: var(--cyan); text-shadow: 0 0 18px rgba(41, 230, 200, 0.35); }
+
+  /* ---------------------------------------------------------------- auth */
+
+  .account-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 32px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .account-bar.visible { display: flex; }
+  .account-bar strong { color: var(--text); font-weight: 600; }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--cyan);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 0;
+  }
+  .link-btn:hover { text-decoration: underline; }
+
+  .auth-panel {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 28px;
+  }
+  .auth-panel.visible { display: block; }
+
+  .auth-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .auth-tab {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    padding: 10px 0;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .auth-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+  .field { margin-bottom: 14px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    background: #0d1114;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    padding: 11px 12px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .field input:focus {
+    outline: none;
+    border-color: var(--cyan);
+  }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--cyan);
+    color: #06201c;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+  .auth-error {
+    font-size: 13px;
+    color: var(--danger);
+    margin-top: 12px;
+    min-height: 18px;
+  }
+
+  /* --------------------------------------------------------------- app */
+
+  #app-content { display: none; }
+  #app-content.visible { display: block; }
+
+  .dropzone {
+    border: 2px dashed var(--panel-border);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .dropzone:hover,
+  .dropzone.dragover {
+    border-color: var(--amber);
+    background: #171c22;
+  }
+
+  .dropzone svg { color: var(--text-muted); margin-bottom: 10px; }
+  .dropzone.dragover svg { color: var(--amber); }
+
+  .dropzone p { margin: 4px 0; }
+  .dropzone .primary { font-size: 15px; font-weight: 600; }
+  .dropzone .secondary { font-size: 13px; color: var(--text-muted); }
+
+  input[type="file"] { display: none; }
+
+  .status {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-muted);
+    min-height: 20px;
+  }
+  .status.error { color: var(--danger); }
+
+  .result {
+    margin-top: 28px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 24px;
+    display: none;
+  }
+  .result.visible { display: block; }
+
+  .result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .result-header .label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .result-header time { font-size: 12px; color: var(--text-muted); }
+
+  .result-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+  }
+
+  .frames {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .frame-box,
+  .frame-input {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--amber-dim);
+    border-radius: 4px;
+    background: #0d1114;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    color: var(--amber);
+    text-shadow: 0 0 8px var(--amber-glow);
+    letter-spacing: 1px;
+  }
+
+  .frame-input {
+    text-align: center;
+    padding: 0;
+    caret-color: var(--cyan);
+  }
+  .frame-input:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: 0 0 0 1px var(--cyan);
+  }
+  .frame-input.invalid {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 1px var(--danger);
+  }
+
+  .frame-box::after,
+  .frame-input::after {
+    content: attr(data-n);
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    color: var(--text-muted);
+    letter-spacing: 0;
+  }
+  /* ::after doesn't render on inputs, so the frame number is a sibling instead */
+  .frame-cell { position: relative; }
+  .frame-cell .frame-n {
+    position: absolute;
+    top: -6px;
+    left: 3px;
+    font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    color: var(--text-muted);
+    letter-spacing: 0;
+    pointer-events: none;
+  }
+
+  .frame-box.strike,
+  .frame-input.strike { color: var(--cyan); text-shadow: 0 0 10px rgba(41, 230, 200, 0.4); }
+
+  .result-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .btn-save {
+    flex: 1;
+    background: var(--amber);
+    color: #241900;
+  }
+  .btn-save:hover { filter: brightness(1.08); }
+  .btn-discard {
+    flex: 0 0 auto;
+    background: none;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-discard:hover { border-color: var(--danger); color: var(--danger); }
+
+  .save-error {
+    font-size: 13px;
+    color: var(--danger);
+    margin-top: 12px;
+    min-height: 0;
+  }
+
+  .thumb-row {
+    margin-top: 18px;
+  }
+  .thumb-row img {
+    display: block;
+    width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    border-radius: 10px;
+    border: 1px solid var(--panel-border);
+    background: #0d1114;
+  }
+
+  section.history { margin-top: 48px; }
+
+  .history h2 {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 10px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+  }
+  .history-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+  .history-main {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0 4px 0 2px;
+    padding-right: 0;
+  }
+  .history-item .frame-string {
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    color: var(--amber);
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+  .history-score {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cyan);
+    white-space: nowrap;
+  }
+  .history-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 0;
+  }
+  .history-item time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-right: 0;
+    margin-left: 0;
+  }
+  .btn-edit {
+    border: 1px solid var(--cyan);
+    background: transparent;
+    color: var(--cyan);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-edit:hover { background: rgba(41, 230, 200, 0.12); }
+  .btn-delete {
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-delete:hover { background: rgba(255, 93, 93, 0.12); }
+
+  .empty-history {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px 0;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="eyebrow">Ollama-powered</p>
+    <h1>Score<span>board</span> Reader</h1>
+  </header>
+
+  <div class="account-bar" id="account-bar">
+    <span>Signed in as <strong id="account-email"></strong></span>
+    <button class="link-btn" id="logout-btn">Log out</button>
+  </div>
+
+  <div class="auth-panel" id="auth-panel">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" data-tab="login">Sign in</button>
+      <button class="auth-tab" id="tab-signup" data-tab="signup">Create account</button>
+    </div>
+
+    <form id="auth-form">
+      <div class="field">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" autocomplete="email" required />
+      </div>
+      <div class="field">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn-primary" id="auth-submit">Sign in</button>
+      <p class="auth-error" id="auth-error"></p>
+    </form>
+  </div>
+
+  <div id="app-content">
+    <label class="dropzone" id="dropzone" for="file-input">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="primary">Drop a scoreboard photo, or click to choose one</p>
+      <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
+    </label>
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+
+    <p class="status" id="status"></p>
+
+    <div class="result" id="result">
+      <div class="result-header">
+        <span class="label">Review &amp; edit before saving</span>
+      </div>
+      <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
+      <div class="frames" id="frames"></div>
+      <div class="thumb-row">
+        <img id="result-thumb" alt="Uploaded scoreboard" />
+      </div>
+      <div class="result-actions">
+        <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
+        <button type="button" class="btn-discard" id="discard-btn">Discard</button>
+      </div>
+      <p class="save-error" id="save-error"></p>
+    </div>
+
+    <section class="history">
+      <h2>Your previous games</h2>
+      <div id="history-list"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  const accountBar = document.getElementById('account-bar');
+  const accountEmail = document.getElementById('account-email');
+  const logoutBtn = document.getElementById('logout-btn');
+  const authPanel = document.getElementById('auth-panel');
+  const tabLogin = document.getElementById('tab-login');
+  const tabSignup = document.getElementById('tab-signup');
+  const authForm = document.getElementById('auth-form');
+  const authEmail = document.getElementById('auth-email');
+  const authPassword = document.getElementById('auth-password');
+  const authSubmit = document.getElementById('auth-submit');
+  const authError = document.getElementById('auth-error');
+  const appContent = document.getElementById('app-content');
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const statusEl = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  const framesEl = document.getElementById('frames');
+  const resultThumb = document.getElementById('result-thumb');
+  const historyList = document.getElementById('history-list');
+  const saveBtn = document.getElementById('save-btn');
+  const discardBtn = document.getElementById('discard-btn');
+  const saveError = document.getElementById('save-error');
+
+  let authMode = 'login';
+
+  // Tracks the scoreboard currently under review (parsed but not yet saved).
+  let pendingUpload = null; // { imageKey }
+  let pendingEdit = null; // { gameId }
+
+  // The single source of truth while editing: a flat, in-order list of roll
+  // symbols. Frame boxes are just a *view* of this array, recomputed with
+  // parseFrames() after every edit - mirrors parse_frames() in ocr.py so the
+  // grouping the user sees always matches what the backend would produce.
+  let rollSymbols = [];
+
+  // Where to restore focus after a re-render, expressed as a position in the
+  // flat rollSymbols array (not a frame/box position, since boxes get
+  // rebuilt from scratch on every edit).
+  let pendingCursor = null; // { global: number } | null
+
+  // Only these symbols are ever valid on a bowling scoreboard roll.
+  const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
+  const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
+
+  // ------------------------------------------------------ frame grouping
+  // Mirrors parse_frames() in app/ocr.py exactly, plus one safety net: if
+  // more symbols exist than a legal 10-frame game can hold (shouldn't
+  // happen with real data, but can happen transiently while editing),
+  // extra symbols are grouped as additional 2-symbol frames instead of
+  // being silently dropped, so nothing the user typed disappears.
+  function parseFrames(symbols) {
+    const frames = [];
+    let i = 0;
+
+    for (let frameNum = 1; frameNum <= 10 || i < symbols.length; frameNum++) {
+      if (i >= symbols.length) break;
+
+      let chunk;
+      if (frameNum < 10) {
+        if (symbols[i] === 'X') {
+          chunk = [symbols[i]];
+        } else {
+          chunk = symbols.slice(i, i + 2);
+        }
+      } else if (frameNum === 10) {
+        // Editing needs a stable box, not one that reclassifies mid-typing.
+        // Just take up to 3 remaining symbols — legality (strike/spare
+        // required for a 3rd roll) is validated server-side on save, not here.
+        chunk = symbols.slice(i, i + 3);
+      } else {
+        // Overflow past frame 10 - not a real bowling frame, just a safety
+        // net so extra typed symbols stay visible instead of vanishing.
+        chunk = symbols.slice(i, i + 2);
+      }
+
+      i += chunk.length;
+      frames.push(chunk.join(''));
+    }
+
+    return frames;
+  }
+
+  function flattenFrameString(frameString) {
+    return frameString.replace(/\s+/g, '').split('');
+  }
+
+  // ------------------------------------------------------------- auth UI
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    tabLogin.classList.toggle('active', mode === 'login');
+    tabSignup.classList.toggle('active', mode === 'signup');
+    authSubmit.textContent = mode === 'login' ? 'Sign in' : 'Create account';
+    authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+    authError.textContent = '';
+  }
+  tabLogin.addEventListener('click', () => setAuthMode('login'));
+  tabSignup.addEventListener('click', () => setAuthMode('signup'));
+
+  function showLoggedOut() {
+    accountBar.classList.remove('visible');
+    authPanel.classList.add('visible');
+    appContent.classList.remove('visible');
+  }
+
+  function showLoggedIn(user) {
+    accountEmail.textContent = user.email;
+    accountBar.classList.add('visible');
+    authPanel.classList.remove('visible');
+    appContent.classList.add('visible');
+    loadHistory();
+  }
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    authError.textContent = '';
+    authSubmit.disabled = true;
+
+    const endpoint = authMode === 'login' ? '/api/login' : '/api/signup';
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail.value, password: authPassword.value }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        authError.textContent = data.detail || 'Something went wrong.';
+        return;
+      }
+
+      authPassword.value = '';
+      showLoggedIn(data);
+    } catch {
+      authError.textContent = 'Could not reach the server.';
+    } finally {
+      authSubmit.disabled = false;
+    }
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    showLoggedOut();
+  });
+
+  async function checkSession() {
+    try {
+      const res = await fetch('/api/me');
+      const user = await res.json();
+      if (user) {
+        showLoggedIn(user);
+      } else {
+        showLoggedOut();
+      }
+    } catch {
+      showLoggedOut();
+    }
+  }
+
+  // -------------------------------------------------------------- upload
+
+  ['dragover', 'dragenter'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
+  );
+  ['dragleave', 'drop'].forEach(evt =>
+    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
+  );
+  dropzone.addEventListener('drop', e => {
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
+  });
+
+  function setStatus(msg, isError = false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', isError);
+  }
+
+  function sanitizeText(raw) {
+    return raw.toUpperCase().replace(ALLOWED_CHARS, '');
+  }
+
+  // Rebuilds the frame boxes from rollSymbols (never from what's currently
+  // in the DOM) and restores the caret to pendingCursor's position in the
+  // new layout, even if that position now falls in a different box.
+  // Keeps rollSymbols capped at whatever a legal 10-frame game can hold.
+  // If an edit pushes symbols past frame 10 (e.g. the OCR misread a digit
+  // from the running score total as an extra roll), the overflow is
+  // dropped rather than shown as a phantom 11th frame.
+  function enforceCapacity() {
+    const frames = parseFrames(rollSymbols);
+    if (frames.length <= 10) return;
+    const keepLength = frames.slice(0, 10).reduce((sum, f) => sum + f.length, 0);
+    rollSymbols = rollSymbols.slice(0, keepLength);
+    if (pendingCursor) {
+      pendingCursor.global = Math.min(pendingCursor.global, rollSymbols.length);
+    }
+  }
+
+  function renderEditableFrames() {
+    enforceCapacity();
+    framesEl.innerHTML = '';
+    const frames = parseFrames(rollSymbols);
+    const displayFrames = frames.length ? frames : [''];
+
+    let offset = 0;
+    const inputs = [];
+
+    displayFrames.forEach((f, idx) => {
+      const cell = document.createElement('div');
+      cell.className = 'frame-cell';
+
+      const n = document.createElement('span');
+      n.className = 'frame-n';
+      n.textContent = idx + 1;
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'frame-input' + (f.includes('X') ? ' strike' : '');
+      input.value = f;
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.dataset.start = offset;
+      input.dataset.len = f.length;
+
+      // Fallback for edits that skip our keydown handling entirely (paste,
+      // IME composition, mobile autocomplete/virtual keyboards): resync
+      // this box's slice of rollSymbols from whatever ended up in the DOM.
+      input.addEventListener('input', () => {
+        const start = parseInt(input.dataset.start, 10);
+        const len = parseInt(input.dataset.len, 10);
+        const clean = sanitizeText(input.value);
+        rollSymbols.splice(start, len, ...clean.split(''));
+        pendingCursor = { global: start + clean.length };
+        renderEditableFrames();
+      });
+
+      offset += f.length;
+      cell.appendChild(n);
+      cell.appendChild(input);
+      framesEl.appendChild(cell);
+      inputs.push(input);
+    });
+
+    restoreCursor(inputs);
+  }
+
+  function restoreCursor(inputs) {
+    if (!pendingCursor || !inputs.length) return;
+
+    let cum = 0;
+    let target = inputs[inputs.length - 1];
+    let localPos = target.value.length;
+
+    for (const input of inputs) {
+      const len = input.value.length;
+      if (pendingCursor.global <= cum + len) {
+        target = input;
+        localPos = pendingCursor.global - cum;
+        break;
+      }
+      cum += len;
+    }
+
+    target.focus();
+    target.setSelectionRange(localPos, localPos);
+  }
+
+  // Given a focused frame-input and its current selection, returns the
+  // equivalent [start, end] positions in the flat rollSymbols array.
+  function globalSelection(input) {
+    const base = parseInt(input.dataset.start, 10);
+    return [base + input.selectionStart, base + input.selectionEnd];
+  }
+
+  framesEl.addEventListener('keydown', (e) => {
+    const input = e.target;
+    if (!input.classList.contains('frame-input')) return;
+
+    const [gStart, gEnd] = globalSelection(input);
+
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      if (gStart !== gEnd) {
+        rollSymbols.splice(gStart, gEnd - gStart);
+        pendingCursor = { global: gStart };
+      } else if (gStart > 0) {
+        rollSymbols.splice(gStart - 1, 1);
+        pendingCursor = { global: gStart - 1 };
+      } else {
+        return;
+      }
+      renderEditableFrames();
+      return;
+    }
+
+    if (e.key === 'Delete') {
+      e.preventDefault();
+      if (gStart !== gEnd) {
+        rollSymbols.splice(gStart, gEnd - gStart);
+        pendingCursor = { global: gStart };
+      } else if (gStart < rollSymbols.length) {
+        rollSymbols.splice(gStart, 1);
+        pendingCursor = { global: gStart };
+      } else {
+        return;
+      }
+      renderEditableFrames();
+      return;
+    }
+
+    // At a box edge, jump into the adjacent box instead of getting stuck.
+    if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) {
+      const inputs = Array.from(framesEl.querySelectorAll('.frame-input'));
+      const idx = inputs.indexOf(input) - 1;
+      if (idx >= 0) {
+        e.preventDefault();
+        inputs[idx].focus();
+        const end = inputs[idx].value.length;
+        inputs[idx].setSelectionRange(end, end);
+      }
+      return;
+    }
+    if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && input.selectionEnd === input.value.length) {
+      const inputs = Array.from(framesEl.querySelectorAll('.frame-input'));
+      const idx = inputs.indexOf(input) + 1;
+      if (idx < inputs.length) {
+        e.preventDefault();
+        inputs[idx].focus();
+        inputs[idx].setSelectionRange(0, 0);
+      }
+      return;
+    }
+
+    // Any other single printable character: insert/replace in the flat
+    // array, which reflows every box after it.
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const upper = e.key.toUpperCase();
+      if (!ALLOWED_SYMBOL.test(upper)) {
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      rollSymbols.splice(gStart, gEnd - gStart, upper);
+      pendingCursor = { global: gStart + 1 };
+      renderEditableFrames();
+    }
+  });
+
+  function collectFrameString() {
+    if (!rollSymbols.length) return null;
+    return parseFrames(rollSymbols).join(' ');
+  }
+
+  function formatTime(iso) {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
+  }
+
+  function calculateBowlingScore(frameString) {
+    const frames = frameString.trim().split(/\s+/).filter(Boolean);
+    if (!frames.length) return '—';
+
+    const parseRollValue = (char) => {
+      if (!char) return 0;
+      const normalized = char.toUpperCase();
+      if (normalized === 'X') return 10;
+      if (normalized === '-' || normalized === 'F') return 0;
+      const value = Number(normalized);
+      return Number.isFinite(value) ? value : 0;
+    };
+
+    const rolls = [];
+
+    frames.forEach((frame, index) => {
+      const normalized = frame.toUpperCase();
+      const chars = normalized.split('');
+      const isLastFrame = index === frames.length - 1;
+
+      if (isLastFrame) {
+        if (chars[0] === 'X') {
+          rolls.push(10);
+          const secondChar = chars[1] || '';
+          const thirdChar = chars[2] || '';
+
+          if (secondChar === 'X') {
+            rolls.push(10);
+          } else if (secondChar === '/') {
+            rolls.push(10 - rolls[rolls.length - 1]);
+          } else {
+            rolls.push(parseRollValue(secondChar));
+          }
+
+          if (thirdChar) {
+            if (thirdChar === '/') {
+              const previousRoll = rolls[rolls.length - 1];
+              rolls.push(10 - previousRoll);
+            } else {
+              rolls.push(parseRollValue(thirdChar));
+            }
+          }
+          return;
+        }
+
+        const firstRoll = parseRollValue(chars[0]);
+        rolls.push(firstRoll);
+
+        if (chars[1] === '/') {
+          rolls.push(10 - firstRoll);
+        } else {
+          rolls.push(parseRollValue(chars[1] || ''));
+        }
+
+        if (chars[2]) {
+          const thirdChar = chars[2];
+          if (thirdChar === '/') {
+            const previousRoll = rolls[rolls.length - 1];
+            rolls.push(10 - previousRoll);
+          } else {
+            rolls.push(parseRollValue(thirdChar));
+          }
+        }
+        return;
+      }
+
+      if (normalized === 'X') {
+        rolls.push(10);
+        return;
+      }
+
+      const firstRoll = parseRollValue(chars[0]);
+      if (chars[1] === '/') {
+        rolls.push(firstRoll, 10 - firstRoll);
+      } else {
+        rolls.push(firstRoll, parseRollValue(chars[1] || ''));
+      }
+    });
+
+    let score = 0;
+    let rollIndex = 0;
+
+    for (let frameNum = 0; frameNum < Math.min(frames.length, 10); frameNum++) {
+      const frame = frames[frameNum];
+      if (!frame) break;
+
+      const normalized = frame.toUpperCase();
+      const isLastFrame = frameNum === frames.length - 1;
+
+      if (isLastFrame) {
+        const frameRolls = rolls.slice(rollIndex, rollIndex + 3);
+        score += frameRolls.reduce((sum, value) => sum + value, 0);
+        break;
+      }
+
+      if (normalized === 'X') {
+        score += 10 + rolls[rollIndex + 1] + rolls[rollIndex + 2];
+        rollIndex += 1;
+        continue;
+      }
+
+      if (normalized.length > 1 && normalized[1] === '/') {
+        score += 10 + rolls[rollIndex + 2];
+        rollIndex += 2;
+        continue;
+      }
+
+      score += rolls[rollIndex] + rolls[rollIndex + 1];
+      rollIndex += 2;
+    }
+
+    return score;
+  }
+
+  function renderHistory(games) {
+    historyList.innerHTML = '';
+    if (!games.length) {
+      historyList.innerHTML = '<p class="empty-history">No games uploaded yet.</p>';
+      return;
+    }
+    games.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <img src="${g.image_url}" alt="Scoreboard thumbnail" />
+        <div class="history-main">
+          <span class="frame-string">${g.frame_string}</span>
+          <span class="history-score">${calculateBowlingScore(g.frame_string)}</span>
+        </div>
+        <div class="history-item-actions">
+          <time>${formatTime(g.created_at)}</time>
+          <button type="button" class="btn-edit" data-game-id="${g.id}">Edit</button>
+          <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
+        </div>
+      `;
+      historyList.appendChild(item);
+    });
+  }
+
+  function openGameForEditing(game) {
+    resetResultPanel();
+    pendingEdit = { gameId: game.id };
+    rollSymbols = flattenFrameString(game.frame_string);
+    pendingCursor = null;
+    renderEditableFrames();
+    resultThumb.src = game.image_url;
+    resultEl.classList.add('visible');
+    saveBtn.textContent = 'Save changes';
+    setStatus('Editing previous game');
+  }
+
+  historyList.addEventListener('click', async (e) => {
+    const editButton = e.target.closest('.btn-edit');
+    if (editButton) {
+      const gameId = Number(editButton.dataset.gameId);
+      if (!gameId) return;
+      const game = (await fetch('/api/games').then(r => r.json())).find(item => item.id === gameId);
+      if (game) {
+        openGameForEditing(game);
+      }
+      return;
+    }
+
+    const deleteButton = e.target.closest('.btn-delete');
+    if (!deleteButton) return;
+
+    const gameId = Number(deleteButton.dataset.gameId);
+    if (!gameId) return;
+
+    try {
+      const res = await fetch(`/api/games/${gameId}`, { method: 'DELETE' });
+      if (res.status === 401) {
+        showLoggedOut();
+        return;
+      }
+      if (!res.ok) {
+        setStatus('Could not delete that game.', true);
+        return;
+      }
+      await loadHistory();
+    } catch {
+      setStatus('Could not delete that game.', true);
+    }
+  });
+
+  async function loadHistory() {
+    try {
+      const res = await fetch('/api/games');
+      if (res.status === 401) { showLoggedOut(); return; }
+      const games = await res.json();
+      renderHistory(games);
+    } catch {
+      historyList.innerHTML = '<p class="empty-history">Could not load history.</p>';
+    }
+  }
+
+  function resetResultPanel() {
+    pendingUpload = null;
+    pendingEdit = null;
+    rollSymbols = [];
+    pendingCursor = null;
+    resultEl.classList.remove('visible');
+    framesEl.innerHTML = '';
+    saveError.textContent = '';
+    fileInput.value = '';
+    saveBtn.textContent = 'Save game';
+  }
+
+  async function uploadFile(file) {
+    setStatus('Reading scoreboard…');
+    resetResultPanel();
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+
+      if (res.status === 401) {
+        setStatus('');
+        showLoggedOut();
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setStatus(data.detail || 'Something went wrong.', true);
+        return;
+      }
+
+      setStatus('');
+      pendingUpload = { imageKey: data.image_key };
+      rollSymbols = flattenFrameString(data.frame_string);
+      pendingCursor = null;
+      renderEditableFrames();
+      resultThumb.src = data.image_url;
+      resultEl.classList.add('visible');
+    } catch (err) {
+      setStatus('Upload failed - is the server running?', true);
+    }
+  }
+
+  saveBtn.addEventListener('click', async () => {
+    if (!pendingUpload && !pendingEdit) return;
+
+    saveError.textContent = '';
+    const frameString = collectFrameString();
+    if (frameString === null) {
+      saveError.textContent = 'Add at least one roll before saving.';
+      return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+      let res;
+      if (pendingEdit) {
+        res = await fetch(`/api/games/${pendingEdit.gameId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frame_string: frameString }),
+        });
+      } else {
+        res = await fetch('/api/games', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_key: pendingUpload.imageKey, frame_string: frameString }),
+        });
+      }
+
+      if (res.status === 401) {
+        showLoggedOut();
+        return;
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        saveError.textContent = data.detail || 'Could not save this game.';
+        return;
+      }
+
+      resetResultPanel();
+      loadHistory();
+    } catch {
+      saveError.textContent = 'Could not reach the server.';
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = pendingEdit ? 'Save changes' : 'Save game';
+    }
+  });
+
+  discardBtn.addEventListener('click', () => {
+    resetResultPanel();
+  });
+
+  checkSession();
+</script>
+</body>
+</html>
