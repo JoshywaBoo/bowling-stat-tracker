@@ -16,19 +16,21 @@ Then open http://127.0.0.1:8000
 """
 
 import sqlite3
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
 from app import auth
 from app.convert import to_png_bytes
-from app.db import get_db
+from app.db import execute, get_db, insert_and_get_id
 from app.ocr import read_scoreboard
-from app.storage import storage
+
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 app = FastAPI(title="Bowling Scoreboard Reader")
 
@@ -43,17 +45,18 @@ MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
 def init_db() -> None:
     with get_db() as conn:
-        conn.execute(
+        execute(
+            conn,
             """
             CREATE TABLE IF NOT EXISTS games (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
+                id BIGSERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
                 image_key TEXT NOT NULL,
                 frame_string TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
-            """
+            """,
         )
 
 
@@ -65,7 +68,6 @@ def row_to_game(row: sqlite3.Row) -> dict:
     return {
         "id": row["id"],
         "frame_string": row["frame_string"],
-        "image_url": storage.url_for(row["image_key"]),
         "created_at": row["created_at"],
     }
 
@@ -142,17 +144,13 @@ async def upload_scoreboard(
     except Exception:
         raise HTTPException(400, "Could not read that file as an image")
 
-    image_key = storage.save(png_bytes)
-
     try:
         frame_string = read_scoreboard(png_bytes)
     except Exception as exc:
         raise HTTPException(502, f"Could not reach Ollama or parse the image: {exc}")
 
     return {
-        "image_key": image_key,
         "frame_string": frame_string,
-        "image_url": storage.url_for(image_key),
     }
 
 
@@ -165,22 +163,17 @@ def confirm_game(
     Called after the user reviews/corrects the OCR result returned by
     POST /api/upload.
     """
-    path = storage.path_for(payload.image_key)
-    if not path.exists():
-        raise HTTPException(404, "Uploaded image not found; please re-upload")
-
     created_at = datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
-        cursor = conn.execute(
-            "INSERT INTO games (user_id, image_key, frame_string, created_at) VALUES (?, ?, ?, ?)",
-            (user["id"], payload.image_key, payload.frame_string, created_at),
+        game_id = insert_and_get_id(
+            conn,
+            "INSERT INTO games (user_id, image_key, frame_string, created_at) VALUES (?, ?, ?, ?) RETURNING id",
+            (user["id"], "", payload.frame_string, created_at),
         )
-        game_id = cursor.lastrowid
 
     return {
         "id": game_id,
         "frame_string": payload.frame_string,
-        "image_url": storage.url_for(payload.image_key),
         "created_at": created_at,
     }
 
@@ -188,7 +181,8 @@ def confirm_game(
 @app.get("/api/games")
 def list_games(user: dict = Depends(auth.get_current_user)):
     with get_db() as conn:
-        rows = conn.execute(
+        rows = execute(
+            conn,
             "SELECT id, image_key, frame_string, created_at FROM games "
             "WHERE user_id = ? ORDER BY id DESC",
             (user["id"],),
@@ -206,7 +200,8 @@ def update_game(
         raise HTTPException(400, "Add at least one roll before saving.")
 
     with get_db() as conn:
-        row = conn.execute(
+        row = execute(
+            conn,
             "SELECT id, user_id FROM games WHERE id = ?",
             (game_id,),
         ).fetchone()
@@ -214,7 +209,8 @@ def update_game(
         if row is None or row["user_id"] != user["id"]:
             raise HTTPException(404, "Game not found")
 
-        conn.execute(
+        execute(
+            conn,
             "UPDATE games SET frame_string = ? WHERE id = ?",
             (payload.frame_string, game_id),
         )
@@ -222,17 +218,11 @@ def update_game(
     return {"ok": True}
 
 
-@app.get("/images/{key}")
-def get_image(key: str, user: dict = Depends(auth.get_current_user)):
-    path = storage.path_for(key)
-    if not path.exists():
-        raise HTTPException(404, "Image not found")
-    return FileResponse(path)
-
 @app.delete("/api/games/{game_id}")
 def delete_game(game_id: int, user: dict = Depends(auth.get_current_user)):
     with get_db() as conn:
-        row = conn.execute(
+        row = execute(
+            conn,
             "SELECT id, user_id, image_key FROM games WHERE id = ?",
             (game_id,),
         ).fetchone()
@@ -242,15 +232,7 @@ def delete_game(game_id: int, user: dict = Depends(auth.get_current_user)):
             # which games exist for other accounts.
             raise HTTPException(404, "Game not found")
 
-        conn.execute("DELETE FROM games WHERE id = ?", (game_id,))
-
-    # Best-effort image cleanup - a stray file on disk isn't worth failing
-    # the request over, so don't let this raise.
-    try:
-        path = storage.path_for(row["image_key"])
-        path.unlink(missing_ok=True)
-    except Exception:
-        pass
+        execute(conn, "DELETE FROM games WHERE id = ?", (game_id,))
 
     return {"ok": True}
 

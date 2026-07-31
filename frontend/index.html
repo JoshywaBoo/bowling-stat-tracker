@@ -174,10 +174,17 @@
   #app-content.visible { display: block; }
 
   .dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 180px;
     border: 2px dashed var(--panel-border);
     border-radius: 14px;
     background: var(--panel);
-    padding: 40px 24px;
+    padding: 24px;
     text-align: center;
     cursor: pointer;
     transition: border-color 0.15s ease, background 0.15s ease;
@@ -189,12 +196,26 @@
     background: #171c22;
   }
 
-  .dropzone svg { color: var(--text-muted); margin-bottom: 10px; }
+  .dropzone svg {
+    color: var(--text-muted);
+    margin: 0;
+    display: block;
+  }
   .dropzone.dragover svg { color: var(--amber); }
 
-  .dropzone p { margin: 4px 0; }
-  .dropzone .primary { font-size: 15px; font-weight: 600; }
-  .dropzone .secondary { font-size: 13px; color: var(--text-muted); }
+  .dropzone p {
+    margin: 0;
+  }
+  .dropzone .primary {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .dropzone .secondary {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
 
   input[type="file"] { display: none; }
 
@@ -288,16 +309,24 @@
     letter-spacing: 0;
   }
   /* ::after doesn't render on inputs, so the frame number is a sibling instead */
-  .frame-cell { position: relative; }
+  .frame-cell {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 6px;
+  }
   .frame-cell .frame-n {
-    position: absolute;
-    top: -6px;
-    left: 3px;
+    position: relative;
+    z-index: 2;
+    margin-bottom: 2px;
+    margin-left: 3px;
     font-family: 'Inter', sans-serif;
     font-size: 8px;
     color: var(--text-muted);
     letter-spacing: 0;
     pointer-events: none;
+    line-height: 1;
   }
 
   .frame-box.strike,
@@ -380,10 +409,10 @@
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 8px;
+    gap: 20px;
     flex: 0 1 auto;
     min-width: 0;
-    margin: 0 4px 0 2px;
+    margin: 0 6px 0 2px;
     padding-right: 0;
   }
   .history-item .frame-string {
@@ -398,7 +427,7 @@
     min-width: 0;
   }
   .history-score {
-    font-size: 12px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--cyan);
     white-space: nowrap;
@@ -450,11 +479,6 @@
 </head>
 <body>
 <main>
-  <header>
-    <p class="eyebrow">Ollama-powered</p>
-    <h1>Score<span>board</span> Reader</h1>
-  </header>
-
   <div class="account-bar" id="account-bar">
     <span>Signed in as <strong id="account-email"></strong></span>
     <button class="link-btn" id="logout-btn">Log out</button>
@@ -1010,7 +1034,6 @@
       const item = document.createElement('div');
       item.className = 'history-item';
       item.innerHTML = `
-        <img src="${g.image_url}" alt="Scoreboard thumbnail" />
         <div class="history-main">
           <span class="frame-string">${g.frame_string}</span>
           <span class="history-score">${calculateBowlingScore(g.frame_string)}</span>
@@ -1031,7 +1054,7 @@
     rollSymbols = flattenFrameString(game.frame_string);
     pendingCursor = null;
     renderEditableFrames();
-    resultThumb.src = game.image_url;
+    resultThumb.removeAttribute('src');
     resultEl.classList.add('visible');
     saveBtn.textContent = 'Save changes';
     setStatus('Editing previous game');
@@ -1092,6 +1115,10 @@
     saveError.textContent = '';
     fileInput.value = '';
     saveBtn.textContent = 'Save game';
+    if (resultThumb.src) {
+      URL.revokeObjectURL(resultThumb.src);
+    }
+    resultThumb.removeAttribute('src');
   }
 
   async function uploadFile(file) {
@@ -1118,11 +1145,16 @@
       }
 
       setStatus('');
-      pendingUpload = { imageKey: data.image_key };
+      pendingUpload = { imageKey: '' };
       rollSymbols = flattenFrameString(data.frame_string);
       pendingCursor = null;
       renderEditableFrames();
-      resultThumb.src = data.image_url;
+
+      const previewUrl = URL.createObjectURL(file);
+      if (resultThumb.src) {
+        URL.revokeObjectURL(resultThumb.src);
+      }
+      resultThumb.src = previewUrl;
       resultEl.classList.add('visible');
     } catch (err) {
       setStatus('Upload failed - is the server running?', true);

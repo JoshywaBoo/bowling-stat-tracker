@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, Request
 
-from app.db import get_db
+from app.db import execute, get_db, insert_and_get_id
 
 PBKDF2_ITERATIONS = 260_000
 SESSION_COOKIE_NAME = "session_token"
@@ -32,25 +32,27 @@ COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
 
 def init_auth_tables() -> None:
     with get_db() as conn:
-        conn.execute(
+        execute(
+            conn,
             """
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id BIGSERIAL PRIMARY KEY,
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL
             )
-            """
+            """,
         )
-        conn.execute(
+        execute(
+            conn,
             """
             CREATE TABLE IF NOT EXISTS sessions (
                 token TEXT PRIMARY KEY,
-                user_id INTEGER NOT NULL,
+                user_id BIGINT NOT NULL,
                 expires_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
-            """
+            """,
         )
 
 
@@ -85,13 +87,17 @@ def create_user(email: str, password: str) -> dict:
 
     with get_db() as conn:
         try:
-            cursor = conn.execute(
-                "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+            user_id = insert_and_get_id(
+                conn,
+                "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?) RETURNING id",
                 (email, password_hash, created_at),
             )
         except sqlite3.IntegrityError:
             raise HTTPException(409, "An account with that email already exists")
-        user_id = cursor.lastrowid
+        except Exception as exc:
+            if "duplicate key" in str(exc).lower() or "unique constraint" in str(exc).lower():
+                raise HTTPException(409, "An account with that email already exists") from exc
+            raise
 
     return {"id": user_id, "email": email}
 
@@ -99,7 +105,7 @@ def create_user(email: str, password: str) -> dict:
 def authenticate_user(email: str, password: str) -> dict:
     email = email.strip().lower()
     with get_db() as conn:
-        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        row = execute(conn, "SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
     if row is None or not verify_password(password, row["password_hash"]):
         raise HTTPException(401, "Incorrect email or password")
@@ -111,7 +117,8 @@ def create_session(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
     expires_at = (datetime.now(timezone.utc) + SESSION_LIFETIME).isoformat()
     with get_db() as conn:
-        conn.execute(
+        execute(
+            conn,
             "INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
             (token, user_id, expires_at),
         )
@@ -120,12 +127,13 @@ def create_session(user_id: int) -> str:
 
 def delete_session(token: str) -> None:
     with get_db() as conn:
-        conn.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        execute(conn, "DELETE FROM sessions WHERE token = ?", (token,))
 
 
 def _get_user_from_token(token: str) -> dict | None:
     with get_db() as conn:
-        row = conn.execute(
+        row = execute(
+            conn,
             """
             SELECT users.id, users.email, sessions.expires_at
             FROM sessions
