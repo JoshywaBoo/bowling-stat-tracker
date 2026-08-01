@@ -2,14 +2,8 @@
 main.py
 
 FastAPI app: create an account / log in, then upload photos of a bowling
-scoreboard, convert to PNG, parse with a local Ollama vision model
-(app/ocr.py), and store both the image and the parsed result against your
-account.
-
-Run locally (from the backend/ directory):
-    ollama pull qwen2.5vl
-    pip install -r requirements.txt
-    uvicorn app.main:app --reload
+scoreboard, convert to PNG, parse with a vision model
+(app/ocr.py), and store result in a PostgreSQL database with the user's account.
 
 Then open http://127.0.0.1:8000
 (index.html is served from the sibling frontend/ folder - see FRONTEND_DIR below)
