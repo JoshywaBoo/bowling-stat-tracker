@@ -16,13 +16,13 @@ Then open http://127.0.0.1:8000
 """
 
 import sqlite3
-import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
+import secrets
+from app.email import send_email_code
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
 from app import auth
@@ -98,17 +98,63 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class VerifyRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    password: str   
+
+
 @app.post("/api/signup")
-def signup(payload: SignupRequest, response: Response):
-    user = auth.create_user(payload.email, payload.password)
-    token = auth.create_session(user["id"])
-    auth.set_session_cookie(response, token)
-    return user
+def signup(payload: SignupRequest):
+
+    user = auth.create_user(
+        payload.email,
+        payload.password
+    )
+
+    if not user:
+        raise HTTPException(
+            400,
+            "Email already registered"
+        )
+
+    code = str(secrets.randbelow(900000) + 100000)
+
+    auth.save_verification_code(
+        user["id"],
+        code
+    )
+
+    send_email_code(
+        payload.email,
+        code,
+        "verify"
+    )
+
+    return {
+        "message": "Verification email sent"
+    }
 
 
 @app.post("/api/login")
 def login(payload: LoginRequest, response: Response):
     user = auth.authenticate_user(payload.email, payload.password)
+
+    if not user.get("email_verified", False):
+        raise HTTPException(
+            403,
+            "Please verify your email first"
+        )
+    
     token = auth.create_session(user["id"])
     auth.set_session_cookie(response, token)
     return user
@@ -123,6 +169,106 @@ def logout(response: Response):
 @app.get("/api/me")
 def me(user: dict | None = Depends(auth.get_current_user_optional)):
     return user  # null if not logged in
+
+
+@app.post("/api/verify-email")
+def verify_email(
+    payload: VerifyRequest,
+    response: Response
+):
+
+    user = auth.verify_code(
+        payload.email,
+        payload.code
+    )
+
+    if not user:
+        raise HTTPException(
+            400,
+            "Invalid verification code"
+        )
+
+    token = auth.create_session(user["id"])
+    auth.set_session_cookie(response, token)
+
+    return user
+
+
+@app.post("/api/resend-verification")
+def resend_verification(payload: ForgotPasswordRequest):
+
+    user = auth.get_user_by_email(payload.email)
+
+    if user and not user["email_verified"]:
+
+        code = str(secrets.randbelow(900000) + 100000)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+        auth.save_verification_code(
+            user["id"],
+            code,
+            expires
+        )
+
+        send_email_code(
+            payload.email,
+            code,
+            "verify"
+        )
+
+    return {
+        "message": "If the account exists, a code was sent"
+    }
+
+
+@app.post("/api/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest):
+
+    user = auth.get_user_by_email(payload.email)
+
+    if user:
+
+        code = str(secrets.randbelow(900000) + 100000)
+        expires = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+        auth.save_reset_code(
+            user["id"],
+            code,
+            expires
+        )
+
+        send_email_code(
+            payload.email,
+            code,
+            "reset"
+        )
+
+    return {
+        "message":
+        "If the email exists, a code was sent"
+    }
+
+
+@app.post("/api/reset-password")
+def reset_password(
+    payload: ResetPasswordRequest
+):
+
+    success = auth.reset_password(
+        payload.email,
+        payload.code,
+        payload.password
+    )
+
+    if not success:
+        raise HTTPException(
+            400,
+            "Invalid reset code"
+        )
+
+    return {
+        "message":"Password updated"
+    }
 
 
 # ------------------------------------------------------------------ games
