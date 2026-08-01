@@ -4,7 +4,7 @@ import resend
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 
-def send_code(email: str, code: str, purpose="verify"):
+def send_email_code(email: str, code: str, purpose="verify"):
     if purpose == "verify":
         subject = "Verify your Bowling Tracker account"
         text = f"""
