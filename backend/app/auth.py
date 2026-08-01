@@ -39,10 +39,20 @@ def init_auth_tables() -> None:
                 id BIGSERIAL PRIMARY KEY,
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
+
+                email_verified BOOLEAN DEFAULT FALSE,
+
+                verification_code TEXT,
+                verification_expires TEXT,
+
+                reset_code TEXT,
+                reset_expires TEXT,
+
                 created_at TEXT NOT NULL
             )
             """,
         )
+
         execute(
             conn,
             """
@@ -89,8 +99,23 @@ def create_user(email: str, password: str) -> dict:
         try:
             user_id = insert_and_get_id(
                 conn,
-                "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?) RETURNING id",
-                (email, password_hash, created_at),
+                """
+                INSERT INTO users 
+                (
+                    email,
+                    password_hash,
+                    email_verified,
+                    created_at
+                )
+                VALUES (?, ?, ?, ?)
+                RETURNING id
+                """,
+                (
+                    email,
+                    password_hash,
+                    False,
+                    created_at
+                ),
             )
         except sqlite3.IntegrityError:
             raise HTTPException(409, "An account with that email already exists")
@@ -110,7 +135,11 @@ def authenticate_user(email: str, password: str) -> dict:
     if row is None or not verify_password(password, row["password_hash"]):
         raise HTTPException(401, "Incorrect email or password")
 
-    return {"id": row["id"], "email": row["email"]}
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "email_verified": row["email_verified"]
+    }
 
 
 def create_session(user_id: int) -> str:
@@ -168,13 +197,157 @@ def get_current_user_optional(request: Request) -> dict | None:
     return _get_user_from_token(token) if token else None
 
 
+def get_user_by_email(email: str):
+
+    email = email.strip().lower()
+
+    with get_db() as conn:
+        return execute(
+            conn,
+            "SELECT * FROM users WHERE email = ?",
+            (email,)
+        ).fetchone()
+
+
+def save_verification_code(
+    user_id,
+    code,
+    expires_minutes=10
+):
+
+    expires = (
+        datetime.now(timezone.utc)
+        + timedelta(minutes=expires_minutes)
+    ).isoformat()
+
+    with get_db() as conn:
+        execute(
+            conn,
+            """
+            UPDATE users
+            SET verification_code = ?,
+                verification_expires = ?
+            WHERE id = ?
+            """,
+            (
+                code,
+                expires,
+                user_id
+            )
+        )
+
+
+def verify_code(email, code):
+
+    user = get_user_by_email(email)
+
+    if not user:
+        return None
+
+
+    if user["verification_code"] != code:
+        return None
+
+
+    if datetime.fromisoformat(
+        user["verification_expires"]
+    ) < datetime.now(timezone.utc):
+        return None
+
+
+    with get_db() as conn:
+        execute(
+            conn,
+            """
+            UPDATE users
+            SET email_verified = TRUE,
+                verification_code = NULL,
+                verification_expires = NULL
+            WHERE id = ?
+            """,
+            (user["id"],)
+        )
+
+
+    return user
+
+
+def save_reset_code(
+    user_id,
+    code,
+    expires_minutes=10
+):
+
+    expires = (
+        datetime.now(timezone.utc)
+        + timedelta(minutes=expires_minutes)
+    ).isoformat()
+
+
+    with get_db() as conn:
+        execute(
+            conn,
+            """
+            UPDATE users
+            SET reset_code = ?,
+                reset_expires = ?
+            WHERE id = ?
+            """,
+            (
+                code,
+                expires,
+                user_id
+            )
+        )
+
+
+def reset_password(email, code, new_password):
+
+    user = get_user_by_email(email)
+
+    if not user:
+        return False
+
+
+    if user["reset_code"] != code:
+        return False
+
+
+    if datetime.fromisoformat(
+        user["reset_expires"]
+    ) < datetime.now(timezone.utc):
+        return False
+
+
+    password_hash = hash_password(new_password)
+
+
+    with get_db() as conn:
+        execute(
+            conn,
+            """
+            UPDATE users
+            SET password_hash = ?,
+                reset_code = NULL,
+                reset_expires = NULL
+            WHERE id = ?
+            """,
+            (
+                password_hash,
+                user["id"]
+            )
+        )
+
+    return True
+
+
 def set_session_cookie(response, token):
     response.set_cookie(
         key="session",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=COOKIE_SECURE,
+        samesite="none" if COOKIE_SECURE else "lax",
         max_age=60 * 60 * 24 * 30,
     )
 
@@ -183,6 +356,6 @@ def clear_session_cookie(response):
     response.delete_cookie(
         key="session",
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=COOKIE_SECURE,
+        samesite="none" if COOKIE_SECURE else "lax",
     )
