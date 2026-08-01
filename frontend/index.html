@@ -1028,12 +1028,14 @@
     showQueueItem(0);
   }
 
-  async function showQueueItem(index) {
+async function showQueueItem(index) {
     if (index >= uploadQueue.length) {
       // queue finished
       document.getElementById('queue-progress').textContent = '';
       resultEl.classList.remove('visible');
       setStatus('All photos processed.');
+      uploadQueue = [];
+      queueIndex = 0;
       loadHistory();
       return;
     }
@@ -1215,7 +1217,10 @@
 
   function showLoggedOut() {
     stopVerifyPolling();
-    isLoggedIn = false;   // ← add this
+    isLoggedIn = false;
+    uploadQueue = [];
+    queueIndex = 0;
+    queueSuspendedForEdit = false;
     navAvatarContainer.style.display = 'none';
     navLoginTrigger.style.display = 'block';
     setNavDropdownOpen(false);
