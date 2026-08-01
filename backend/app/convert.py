@@ -17,6 +17,7 @@ from io import BytesIO
 
 import cv2
 import numpy as np
+import math
 import pillow_heif
 from PIL import Image, ImageOps
 
@@ -36,43 +37,44 @@ MIN_CROP_AREA_FRACTION = 0.03
 # or the very edge of the scoreboard's outermost column.
 CROP_PADDING_FRACTION = 0.04
 
-
 def _detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
-    """Find the bounding box of the scoreboard monitor in a photo.
-
-    Bowling scoreboard screens are backlit and glow - high brightness and
-    high saturation - against a comparatively dark ceiling/rigging
-    background. We threshold on that, clean up the mask, and take the
-    largest resulting blob as the screen.
-
-    Returns (x0, y0, x1, y1) in pixel coordinates, or None if nothing
-    confident was found (caller should fall back to using the full image).
-    """
-    arr = np.array(img)  # RGB
+    arr = np.array(img)
     img_bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
     h_img, w_img = img_bgr.shape[:2]
+    img_cx, img_cy = w_img / 2, h_img / 2
 
     hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
     _, s, v = cv2.split(hsv)
     mask = ((s > 60) & (v > 80)).astype(np.uint8) * 255
 
-    kernel = np.ones((15, 15), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    # Larger closing kernel than before (35 vs 15) - bridges small gaps
+    # like the divider line between a scoreboard's score grid and its
+    # info bar, so the whole screen forms one blob instead of fragmenting.
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((35, 35), np.uint8))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None
 
-    best = max(contours, key=cv2.contourArea)
-    area = cv2.contourArea(best)
-    if area < (w_img * h_img) * MIN_CROP_AREA_FRACTION:
+    total_area = w_img * h_img
+    candidates = [
+        cv2.boundingRect(c) for c in contours
+        if cv2.contourArea(c) >= total_area * MIN_CROP_AREA_FRACTION
+    ]
+    if not candidates:
         return None
 
-    x, y, w, h = cv2.boundingRect(best)
-    pad_x = int(w * CROP_PADDING_FRACTION)
-    pad_y = int(h * CROP_PADDING_FRACTION)
+    # Among large bright/saturated regions, the scoreboard is the one the
+    # photographer centered in frame - other bright objects (lit trusses,
+    # neighboring lane monitors) tend to sit off to the side or along an edge.
+    def dist_to_center(box):
+        x, y, w, h = box
+        return math.hypot((x + w / 2) - img_cx, (y + h / 2) - img_cy)
 
+    x, y, w, h = min(candidates, key=dist_to_center)
+
+    pad_x, pad_y = int(w * CROP_PADDING_FRACTION), int(h * CROP_PADDING_FRACTION)
     x0 = max(0, x - pad_x)
     y0 = max(0, y - pad_y)
     x1 = min(w_img, x + w + pad_x)
