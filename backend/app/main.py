@@ -14,9 +14,9 @@ Run locally (from the backend/ directory):
 Then open http://127.0.0.1:8000
 (index.html is served from the sibling frontend/ folder - see FRONTEND_DIR below)
 """
-import traceback
 
 import sqlite3
+import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import secrets
@@ -56,6 +56,8 @@ FRONTEND_DIR = REPO_ROOT / "frontend"
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "youremail@example.com")
 
 
 def init_db() -> None:
@@ -138,7 +140,8 @@ def signup(payload: SignupRequest):
     send_email_code(
         payload.email,
         code,
-        "verify"
+        "verify",
+        for_email=payload.email
     )
 
     return {
@@ -213,7 +216,8 @@ def resend_verification(payload: ForgotPasswordRequest):
         send_email_code(
             payload.email,
             code,
-            "verify"
+            "verify",
+            for_email=payload.email
         )
 
     return {
@@ -228,7 +232,7 @@ def forgot_password(payload: ForgotPasswordRequest):
     if user:
         code = str(secrets.randbelow(900000) + 100000)
         auth.save_reset_code(user["id"], code, 10)
-        send_email_code(payload.email, code, "reset")
+        send_email_code(ADMIN_EMAIL, code, "reset", for_email=payload.email)
 
     return {"message": "If the email exists, a code was sent"}
 

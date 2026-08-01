@@ -4,11 +4,13 @@ import resend
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 
-def send_email_code(email: str, code: str, purpose="verify"):
+def send_email_code(email: str, code: str, purpose="verify", for_email: str | None = None):
+    who = f" (for account: {for_email})" if for_email else ""
+
     if purpose == "verify":
         subject = "Verify your Bowling Tracker account"
         text = f"""
-Your verification code is:
+Verification code{who}:
 
 {code}
 
@@ -17,7 +19,7 @@ This code expires in 10 minutes.
     else:
         subject = "Reset your password"
         text = f"""
-Your password reset code is:
+Password reset code{who}:
 
 {code}
 
