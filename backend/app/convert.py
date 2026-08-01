@@ -27,7 +27,9 @@ pillow_heif.register_heif_opener()
 # above roughly this range anyway, so sending more doesn't improve OCR accuracy.
 # Override with MAX_IMAGE_DIMENSION env var if scoreboard text is coming out blurry.
 MAX_IMAGE_DIMENSION = int(os.environ.get("MAX_IMAGE_DIMENSION", "1000"))
-MAX_DETECTION_DIMENSION = int(os.environ.get("MAX_DETECTION_DIMENSION", "1000"))  # downscale for detection only, not final output
+
+# downscale for detection only, not final output
+MAX_DETECTION_DIMENSION = int(os.environ.get("MAX_DETECTION_DIMENSION", "1000"))
 
 # If the detected "screen" region is smaller than this fraction of the total
 # image area, treat detection as unreliable and skip cropping. Guards against
@@ -98,11 +100,11 @@ def to_png_bytes(
 
     if auto_crop:
         width, height = img.size
-        if max(width, height) > DETECTION_MAX_DIMENSION:
+        if max(width, height) > MAX_DETECTION_DIMENSION:
             # Detect on a downscaled copy - cv2 ops on a 24MP+ array can
             # use several hundred MB of intermediate buffers. Detection
             # only needs enough detail to find the bright screen region.
-            detect_scale = DETECTION_MAX_DIMENSION / max(width, height)
+            detect_scale = MAX_DETECTION_DIMENSION / max(width, height)
             detect_size = (
                 max(1, int(width * detect_scale)),
                 max(1, int(height * detect_scale)),
