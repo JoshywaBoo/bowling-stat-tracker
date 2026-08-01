@@ -20,6 +20,8 @@ import numpy as np
 import math
 import pillow_heif
 from PIL import Image, ImageOps
+from dotenv import load_dotenv
+load_dotenv()
 
 pillow_heif.register_heif_opener()
 
@@ -38,9 +40,10 @@ MIN_CROP_AREA_FRACTION = 0.03
 
 # Extra margin added around the detected screen so we don't clip the bezel
 # or the very edge of the scoreboard's outermost column.
-CROP_PADDING_FRACTION = 0.04
+CROP_PADDING_FRACTION = 0.18
 
-def _detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
+
+def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     arr = np.array(img)
     img_bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
     h_img, w_img = img_bgr.shape[:2]
@@ -53,8 +56,15 @@ def _detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None
     # Larger closing kernel than before (35 vs 15) - bridges small gaps
     # like the divider line between a scoreboard's score grid and its
     # info bar, so the whole screen forms one blob instead of fragmenting.
+
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((35, 35), np.uint8))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
+    # Must be larger than the CLOSE kernel above, or bridges the CLOSE step
+    # creates (e.g. thin gaps to overhead truss/lighting) survive this step.
+    OPEN_KERNEL = int(os.environ.get("MASK_OPEN_KERNEL", "60"))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((OPEN_KERNEL, OPEN_KERNEL), np.uint8))
+
+    if os.environ.get("DEBUG_MASK"):
+        Image.fromarray(mask).save("debug_mask.png")
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
@@ -74,15 +84,42 @@ def _detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None
     def dist_to_center(box):
         x, y, w, h = box
         return math.hypot((x + w / 2) - img_cx, (y + h / 2) - img_cy)
-
+    
     x, y, w, h = min(candidates, key=dist_to_center)
 
-    pad_x, pad_y = int(w * CROP_PADDING_FRACTION), int(h * CROP_PADDING_FRACTION)
-    x0 = max(0, x - pad_x)
-    y0 = max(0, y - pad_y)
-    x1 = min(w_img, x + w + pad_x)
-    y1 = min(h_img, y + h + pad_y)
-    return (x0, y0, x1, y1)
+    # The bounding box can include stray extra area beyond the actual
+    # screen (e.g. a thin bridge up to overhead truss lighting, or a
+    # sliver of a neighboring monitor). Trim it down to its dense "core":
+    # scan rows/columns for how much of the mask is actually filled, and
+    # shrink each edge inward until it's solid. Thin sparse appendages
+    # get cut off.
+    sub_mask = mask[y:y + h, x:x + w] > 0
+    row_fill = sub_mask.mean(axis=1)
+    col_fill = sub_mask.mean(axis=0)
+
+    DENSITY_THRESHOLD = 0.5
+
+    def trim_indices(fill):
+        idx = np.where(fill >= DENSITY_THRESHOLD)[0]
+        if len(idx) == 0:
+            return 0, len(fill)
+        return int(idx[0]), int(idx[-1]) + 1
+
+    top, bottom = trim_indices(row_fill)
+    left, right = trim_indices(col_fill)
+
+    x0, y0 = x + left, y + top
+    x1, y1 = x + right, y + bottom
+
+    # Add back a margin so we don't clip the bezel or outermost column.
+    pad_w = int((x1 - x0) * CROP_PADDING_FRACTION)
+    pad_h = int((y1 - y0) * CROP_PADDING_FRACTION)
+    x0 = max(0, x0 - pad_w)
+    y0 = max(0, y0 - pad_h)
+    x1 = min(w_img, x1 + pad_w)
+    y1 = min(h_img, y1 + pad_h)
+
+    return x0, y0, x1, y1
 
 
 def to_png_bytes(
@@ -110,7 +147,7 @@ def to_png_bytes(
                 max(1, int(height * detect_scale)),
             )
             detect_img = img.resize(detect_size, Image.BILINEAR)
-            box = _detect_scoreboard_box(detect_img)
+            box = detect_scoreboard_box(detect_img)
             if box is not None:
                 # Scale the box back up so the crop happens on the
                 # full-resolution image, not the downscaled copy.
@@ -123,7 +160,7 @@ def to_png_bytes(
                     int(y1 * inv_scale),
                 ))
         else:
-            box = _detect_scoreboard_box(img)
+            box = detect_scoreboard_box(img)
             if box is not None:
                 img = img.crop(box)
 
