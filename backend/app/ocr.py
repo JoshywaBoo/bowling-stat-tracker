@@ -29,38 +29,36 @@ import re
 import sys
 
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+import json
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-
+from dotenv import load_dotenv
+load_dotenv()
 
 '''
 Models:
 "gemini-3.6-flash"
 "gemini-3.5-flash-lite"
 '''
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 MODEL = os.environ.get("MODEL", "gemini-3.5-flash-lite")
 
-PROMPT = """This is a photo of a bowling alley's LED scoreboard display.
+PROMPT = """This is a photo of a bowling alley's LED scoreboard display,
+showing one or more bowlers.
 
-Read the row of small symbols for one bowler that shows what happened on
-each individual roll/ball - NOT the running point totals, and not the
-player's name. There are two rows per player, only read the top row.
+For EACH bowler shown, read:
+- their name (as displayed)
+- the row of roll symbols (top row of their two rows - NOT the running
+  point totals row)
 
-Symbols you'll see, in order, left to right:
-- X = strike
-- a digit 0-9 = number of pins knocked down on that roll
-- / = spare (this roll's symbol always follows a digit)
-- - = a miss / zero pins on that roll
-- F = a foul, which counts as a miss (0 pins) for scoring purposes. 
+Symbols: X = strike, 0-9 = pins knocked down, / = spare, - = miss, F = foul.
 
-Output ONLY the raw sequence of these symbols, in the exact order they
-appear on the display, separated by commas, with no grouping into frames
-and no other text. Do not remove any Fs
+Return a JSON array, one object per bowler, in left-to-right/top-to-bottom
+display order:
+[{"name": "...", "rolls": "X,7,-,9,/,..."}, ...]
 
-Do not group rolls into frames yourself, do not add spaces, do not add
-frame numbers, and do not include any explanation - output only the
-comma-separated symbol sequence."""
+Output ONLY the JSON array, no other text."""
 
 
 def parse_frames(raw_symbols: list[str]) -> str:
@@ -105,12 +103,12 @@ def parse_frames(raw_symbols: list[str]) -> str:
 
 
 def read_scoreboard(image_bytes: bytes) -> str:
-    """Send scoreboard image bytes to the model, then deterministically group the returned rolls into frames."""
-    response = genai.GenerativeModel(MODEL).generate_content(
-        [
-            {"mime_type": "image/png", "data": image_bytes},
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
             PROMPT,
-        ]
+        ],
     )
     raw = response.text.strip()
 
@@ -126,9 +124,49 @@ def read_scoreboard(image_bytes: bytes) -> str:
     return parse_frames(tokens)
 
 
+def read_scoreboard_multiplayer(image_bytes: bytes) -> list[dict]:
+    """
+    TEST-ONLY: parallel implementation for multiplayer support, not yet
+    wired into main.py. Returns one {"name", "frame_string"} dict per
+    bowler detected in the photo.
+    """
+    response = client.models.generate_content(
+        model=MODEL,
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+            PROMPT,
+        ],
+        config=types.GenerateContentConfig(response_mime_type="application/json"),
+    )
+    raw = response.text.strip()
+
+    print("--- raw model output ---")
+    print(raw)
+    print("------------------------")
+
+    players = json.loads(raw)  # let this throw on malformed JSON - we want to see it
+
+    if not isinstance(players, list):
+        raise ValueError(f"Expected a JSON array, got: {type(players)}")
+
+    results = []
+    for i, p in enumerate(players):
+        name = p.get("name", "").strip()
+        rolls_raw = p.get("rolls", "")
+        tokens = re.findall(r"X|[0-9]|/|-|F", rolls_raw.replace(",", " "))
+
+        if not tokens:
+            print(f"WARNING: player {i} ('{name}') had no readable rolls: {rolls_raw!r}")
+
+        results.append({
+            "name": name,
+            "frame_string": parse_frames(tokens) if tokens else "",
+        })
+
+    return results
+
+
 if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
 
     from app.convert import to_png_bytes
 
@@ -142,4 +180,5 @@ if __name__ == "__main__":
 
     img_bytes = to_png_bytes(raw_bytes) if not path.lower().endswith(".png") else raw_bytes
 
-    print(read_scoreboard(img_bytes))
+    for player in read_scoreboard_multiplayer(img_bytes):
+        print(player)
