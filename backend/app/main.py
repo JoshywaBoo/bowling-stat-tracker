@@ -11,7 +11,7 @@ Then open http://127.0.0.1:8000
 
 import sqlite3
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 import secrets
 from app.email import send_email_code
@@ -25,7 +25,7 @@ from pydantic import BaseModel, EmailStr
 from app import auth
 from app.convert import to_png_bytes
 from app.db import execute, get_db, insert_and_get_id
-from app.ocr import read_scoreboard
+from app.ocr import read_scoreboard_multiplayer
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -303,9 +303,10 @@ async def upload_scoreboard(
 ):
     """Parse an uploaded scoreboard image but DO NOT save it yet.
 
-    Returns the image_key and the OCR'd frame_string so the frontend can
-    show an editable preview. Nothing is written to the `games` table
-    until the user confirms via POST /api/games.
+    Returns the image_key and a list of {name, frame_string} - one per
+    bowler detected - so the frontend can show an editable preview for
+    each player. Nothing is written to the `games` table until the user
+    confirms via POST /api/games.
     """
     ext = Path(file.filename or "").suffix.lower()
     if file.content_type not in ALLOWED_TYPES and ext not in ALLOWED_EXTENSIONS:
@@ -321,12 +322,12 @@ async def upload_scoreboard(
         raise HTTPException(400, "Could not read that file as an image")
 
     try:
-        frame_string = read_scoreboard(png_bytes)
+        players = read_scoreboard_multiplayer(png_bytes)
     except Exception as exc:
         raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
 
     return {
-        "frame_string": frame_string,
+        "players": players,
         "preview_image": "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii"),
     }
 
