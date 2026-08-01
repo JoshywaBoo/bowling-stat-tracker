@@ -663,6 +663,15 @@
     border-bottom-color: var(--amber-dim);
   }
 
+  .player-row-score {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--cyan);
+    text-shadow: 0 0 8px rgba(41, 230, 200, 0.4);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
   .player-row .frames {
     display: flex;
     flex-wrap: wrap;
@@ -674,7 +683,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-top: 4px;
+    padding-top: -1px;
   }
   .player-select input[type="checkbox"] {
     width: 20px;
@@ -1105,7 +1114,7 @@
     const token = ++queueRequestToken; // invalidates any older in-flight call
     const entry = uploadQueue[index];
     document.getElementById('queue-progress').textContent =
-      `Photo ${index + 1} of ${uploadQueue.length}`;
+      `Photo ${index + 1}/${uploadQueue.length}`;
 
     // Clear stale state/UI right away so a click during the wait can't
     // act on the previous photo's data.
@@ -1578,10 +1587,26 @@ fileInput.addEventListener('change', () => {
       nameInput.className = 'player-name-input';
       nameInput.placeholder = 'Player name';
       nameInput.value = player.name;
+      nameInput.style.marginBottom = '0';
       nameInput.addEventListener('input', () => {
         player.name = nameInput.value;
       });
-      main.appendChild(nameInput);
+
+      const scoreSpan = document.createElement('span');
+      scoreSpan.className = 'player-row-score';
+      scoreSpan.textContent = typeof playerScore === 'number' ? playerScore : '—';
+      scoreSpan.style.marginLeft = 'auto';
+      scoreSpan.style.minWidth = '32px';
+      scoreSpan.style.textAlign = 'right';
+
+      const nameRow = document.createElement('div');
+      nameRow.style.display = 'flex';
+      nameRow.style.alignItems = 'center';
+      nameRow.style.marginBottom = '8px';
+      nameRow.style.width = '100%';
+      nameRow.appendChild(nameInput);
+      nameRow.appendChild(scoreSpan);
+      main.appendChild(nameRow);
 
       const framesRow = document.createElement('div');
       framesRow.className = 'frames';
@@ -1642,9 +1667,11 @@ fileInput.addEventListener('change', () => {
       restoreCursor(inputs, player);
     });
 
-    resultScoreEl.textContent = players.length === 1
-      ? calculateBowlingScore(parseFrames(players[0].rollSymbols).join(' '))
-      : `${players.filter(p => p.selected).length}/${players.length} selected`;
+    if (players.length === 1) {
+      resultScoreEl.textContent = '';
+    } else {
+      resultScoreEl.textContent = `${players.filter(p => p.selected).length}/${players.length} selected`;
+    }
   }
 
   function restoreCursor(inputs, player) {
