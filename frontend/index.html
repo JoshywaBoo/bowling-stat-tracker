@@ -920,6 +920,7 @@
   let uploadQueue = [];
   let queueIndex = 0;
   let queueSuspendedForEdit = false;
+  let queueRequestToken = 0;
 
   const PREFETCH_AHEAD = 2; // how many uploads to have in flight at once
   let pendingUpload = null;
@@ -1028,9 +1029,8 @@
     showQueueItem(0);
   }
 
-async function showQueueItem(index) {
+  async function showQueueItem(index) {
     if (index >= uploadQueue.length) {
-      // queue finished
       document.getElementById('queue-progress').textContent = '';
       resultEl.classList.remove('visible');
       setStatus('All photos processed.');
@@ -1041,16 +1041,34 @@ async function showQueueItem(index) {
     }
 
     queueIndex = index;
+    const token = ++queueRequestToken; // invalidates any older in-flight call
     const entry = uploadQueue[index];
     document.getElementById('queue-progress').textContent =
       `Photo ${index + 1} of ${uploadQueue.length}`;
 
-    ensurePrefetched(index); // top up the prefetch window
+    ensurePrefetched(index);
+
+    // Clear stale state/UI right away so a click during the wait can't
+    // act on the previous photo's data.
+    pendingUpload = null;
+    rollSymbols = [];
+    pendingCursor = null;
+    framesEl.innerHTML = '';
+    resultScoreEl.textContent = '0';
+    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+      URL.revokeObjectURL(resultThumb.src);
+    }
+    resultThumb.removeAttribute('src');
+    saveBtn.disabled = true;
+    discardBtn.disabled = true;
+    resultEl.classList.add('visible');
 
     setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
 
     try {
       const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
+      if (token !== queueRequestToken) return; // superseded by a newer call
+
       setStatus('');
       pendingUpload = { imageKey: '' };
       rollSymbols = flattenFrameString(data.frame_string);
@@ -1064,12 +1082,18 @@ async function showQueueItem(index) {
       resultThumb.src = data.preview_image;
       resultEl.classList.add('visible');
     } catch {
+      if (token !== queueRequestToken) return;
       setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
       framesEl.innerHTML = '';
       resultThumb.removeAttribute('src');
       resultScoreEl.textContent = '0';
       rollSymbols = [];
-      resultEl.classList.add('visible'); // keep panel open so Discard can skip it
+      resultEl.classList.add('visible');
+    } finally {
+      if (token === queueRequestToken) {
+        saveBtn.disabled = false;
+        discardBtn.disabled = false;
+      }
     }
   }
 
@@ -1917,6 +1941,9 @@ fileInput.addEventListener('change', () => {
   historySearch.addEventListener('input', applyHistoryFilter);
 
   function resetResultPanel() {
+    queueRequestToken++;
+    saveBtn.disabled = false;
+    discardBtn.disabled = false;
     pendingUpload = null;
     pendingEdit = null;
     rollSymbols = [];
