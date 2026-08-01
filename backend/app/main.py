@@ -40,6 +40,7 @@ REPO_ROOT = BACKEND_DIR.parent
 FRONTEND_DIR = REPO_ROOT / "frontend"
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
@@ -116,10 +117,12 @@ def me(user: dict | None = Depends(auth.get_current_user_optional)):
 class ConfirmGameRequest(BaseModel):
     image_key: str
     frame_string: str
+    created_at: str | None = None
 
 
 class UpdateGameRequest(BaseModel):
     frame_string: str
+    created_at: str | None = None
 
 
 @app.post("/api/upload")
@@ -132,7 +135,8 @@ async def upload_scoreboard(
     show an editable preview. Nothing is written to the `games` table
     until the user confirms via POST /api/games.
     """
-    if file.content_type not in ALLOWED_TYPES:
+    ext = Path(file.filename or "").suffix.lower()
+    if file.content_type not in ALLOWED_TYPES and ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {file.content_type}")
 
     raw_bytes = await file.read()
@@ -147,7 +151,7 @@ async def upload_scoreboard(
     try:
         frame_string = read_scoreboard(png_bytes)
     except Exception as exc:
-        raise HTTPException(502, f"Could not reach Ollama or parse the image: {exc}")
+        raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
 
     return {
         "frame_string": frame_string,
@@ -163,18 +167,18 @@ def confirm_game(
     Called after the user reviews/corrects the OCR result returned by
     POST /api/upload.
     """
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at_value = payload.created_at or datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
         game_id = insert_and_get_id(
             conn,
             "INSERT INTO games (user_id, image_key, frame_string, created_at) VALUES (?, ?, ?, ?) RETURNING id",
-            (user["id"], "", payload.frame_string, created_at),
+            (user["id"], "", payload.frame_string, created_at_value),
         )
 
     return {
         "id": game_id,
         "frame_string": payload.frame_string,
-        "created_at": created_at,
+        "created_at": created_at_value,
     }
 
 
@@ -209,11 +213,18 @@ def update_game(
         if row is None or row["user_id"] != user["id"]:
             raise HTTPException(404, "Game not found")
 
-        execute(
-            conn,
-            "UPDATE games SET frame_string = ? WHERE id = ?",
-            (payload.frame_string, game_id),
-        )
+        if payload.created_at:
+            execute(
+                conn,
+                "UPDATE games SET frame_string = ?, created_at = ? WHERE id = ?",
+                (payload.frame_string, payload.created_at, game_id),
+            )
+        else:
+            execute(
+                conn,
+                "UPDATE games SET frame_string = ? WHERE id = ?",
+                (payload.frame_string, game_id),
+            )
 
     return {"ok": True}
 

@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root {
+    color-scheme: dark;
     --void: #0a0d10;
     --panel: #12161b;
     --panel-border: #232b33;
@@ -252,10 +253,63 @@
   }
   .result-header time { font-size: 12px; color: var(--text-muted); }
 
+  .result-score {
+    font-family: 'VT323', monospace;
+    font-size: 26px;
+    color: var(--cyan);
+    text-shadow: 0 0 10px rgba(41, 230, 200, 0.4);
+    letter-spacing: 1px;
+  }
+
   .result-hint {
     font-size: 12px;
     color: var(--text-muted);
     margin: 0 0 16px;
+  }
+
+  .result-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .result-meta label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .result-meta input {
+    background: #0d1114;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 10px;
+    font: inherit;
+    accent-color: var(--text-muted);
+    color-scheme: dark;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .result-meta input:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 10px var(--amber-glow);
+  }
+
+  .result-meta input:focus {
+    outline: none;
+  }
+
+  .result-meta input::-webkit-calendar-picker-indicator {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(8%) saturate(516%) hue-rotate(167deg) brightness(88%) contrast(97%);
+    opacity: 1;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: filter 0.15s ease, opacity 0.15s ease;
+  }
+
+  .result-meta input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    filter: brightness(0) saturate(100%) invert(85%) sepia(32%) saturate(7020%) hue-rotate(359deg) brightness(103%) contrast(104%);
   }
 
   .frames {
@@ -520,8 +574,13 @@
     <div class="result" id="result">
       <div class="result-header">
         <span class="label">Review &amp; edit before saving</span>
+        <span class="result-score" id="result-score">0</span>
       </div>
       <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
+      <div class="result-meta">
+        <label for="edited-datetime">Date / time</label>
+        <input type="datetime-local" id="edited-datetime" />
+      </div>
       <div class="frames" id="frames"></div>
       <div class="thumb-row">
         <img id="result-thumb" alt="Uploaded scoreboard" />
@@ -564,6 +623,8 @@
   const saveBtn = document.getElementById('save-btn');
   const discardBtn = document.getElementById('discard-btn');
   const saveError = document.getElementById('save-error');
+  const editedDateTimeInput = document.getElementById('edited-datetime');
+  const resultScoreEl = document.getElementById('result-score');
 
   let authMode = 'login';
 
@@ -626,6 +687,15 @@
 
   function flattenFrameString(frameString) {
     return frameString.replace(/\s+/g, '').split('');
+  }
+
+  function parseRollValue(char) {
+    if (!char) return 0;
+    const normalized = char.toUpperCase();
+    if (normalized === 'X') return 10;
+    if (normalized === '-' || normalized === 'F') return 0;
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : 0;
   }
 
   // ------------------------------------------------------------- auth UI
@@ -750,6 +820,8 @@
     framesEl.innerHTML = '';
     const frames = parseFrames(rollSymbols);
     const displayFrames = frames.length ? frames : [''];
+
+    resultScoreEl.textContent = calculateBowlingScore(frames.join(' '));
 
     let offset = 0;
     const inputs = [];
@@ -910,18 +982,79 @@
     }
   }
 
+  function formatDateTimeInput(iso) {
+    try {
+      const date = new Date(iso || Date.now());
+      const offset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+    } catch {
+      return '';
+    }
+  }
+
+  function validateGame(symbols) {
+    const frames = parseFrames(symbols);
+
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i].toUpperCase();
+      const isLast = i === frames.length - 1;
+      const isFrame10 = i === 9; // frame 10 has different rules regardless of whether more frames follow
+
+      if (!frame) return `Frame ${i + 1} is empty.`;
+
+      if (!isFrame10) {
+        if (frame === 'X') continue;
+
+        // If this is the last frame typed so far and only 1 symbol exists,
+        // it's just in-progress (e.g. user typed "7" and hasn't rolled again yet) — not invalid.
+        if (frame.length === 1) {
+          if (isLast) continue;
+          return `Frame ${i + 1} is incomplete.`;
+        }
+
+        const [first, second] = frame;
+        if (first === '/') {
+          return `Frame ${i + 1}: spare can't be the first roll.`;
+        }
+
+        if (second === '/') continue; // spare always valid
+
+        if (parseRollValue(first) + parseRollValue(second) > 10) {
+          return `Frame ${i + 1}: rolls can't total more than 10 pins (got "${frame}").`;
+        }
+        continue;
+      }
+
+      // Frame 10 - only fully validate once it looks "finished" for its case;
+      // partial frame 10s (still being typed) are left alone.
+      const chars = frame.split('');
+
+      if (chars[0] === '/') {
+        return `Frame 10: can't start with a spare (got "${frame}").`;
+      }
+
+      if (chars[0] === 'X') {
+        if (chars.length < 2) continue; // still typing
+        if (chars[1] !== 'X' && chars[1] !== '/' && chars.length === 3 &&
+            parseRollValue(chars[1]) + parseRollValue(chars[2]) > 10) {
+          return `Frame 10: 2nd and 3rd rolls can't total more than 10 pins.`;
+        }
+      } else if (chars.length >= 2 && chars[1] === '/') {
+        continue; // spare, bonus roll (if present) is always valid
+      } else if (chars.length === 2) {
+        if (parseRollValue(chars[0]) + parseRollValue(chars[1]) > 10) {
+          return `Frame 10: rolls can't total more than 10 pins (got "${frame}").`;
+        }
+      }
+      // chars.length === 1 or 0: still typing, nothing to validate yet
+    }
+
+    return null; // valid so far
+  }
+
   function calculateBowlingScore(frameString) {
     const frames = frameString.trim().split(/\s+/).filter(Boolean);
     if (!frames.length) return '—';
-
-    const parseRollValue = (char) => {
-      if (!char) return 0;
-      const normalized = char.toUpperCase();
-      if (normalized === 'X') return 10;
-      if (normalized === '-' || normalized === 'F') return 0;
-      const value = Number(normalized);
-      return Number.isFinite(value) ? value : 0;
-    };
 
     const rolls = [];
 
@@ -1053,6 +1186,7 @@
     pendingEdit = { gameId: game.id };
     rollSymbols = flattenFrameString(game.frame_string);
     pendingCursor = null;
+    editedDateTimeInput.value = formatDateTimeInput(game.created_at);
     renderEditableFrames();
     resultThumb.removeAttribute('src');
     resultEl.classList.add('visible');
@@ -1111,9 +1245,11 @@
     rollSymbols = [];
     pendingCursor = null;
     resultEl.classList.remove('visible');
+    resultScoreEl.textContent = '0';
     framesEl.innerHTML = '';
     saveError.textContent = '';
     fileInput.value = '';
+    editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
     saveBtn.textContent = 'Save game';
     if (resultThumb.src) {
       URL.revokeObjectURL(resultThumb.src);
@@ -1148,6 +1284,7 @@
       pendingUpload = { imageKey: '' };
       rollSymbols = flattenFrameString(data.frame_string);
       pendingCursor = null;
+      editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
       renderEditableFrames();
 
       const previewUrl = URL.createObjectURL(file);
@@ -1171,22 +1308,29 @@
       return;
     }
 
+    const validationError = validateGame(rollSymbols);
+    if (validationError) {
+      saveError.textContent = validationError;
+      return;
+    }
+
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving…';
 
     try {
+      const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
       let res;
       if (pendingEdit) {
         res = await fetch(`/api/games/${pendingEdit.gameId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ frame_string: frameString }),
+          body: JSON.stringify({ frame_string: frameString, created_at: createdAtValue }),
         });
       } else {
         res = await fetch('/api/games', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_key: pendingUpload.imageKey, frame_string: frameString }),
+          body: JSON.stringify({ image_key: pendingUpload.imageKey, frame_string: frameString, created_at: createdAtValue }),
         });
       }
 

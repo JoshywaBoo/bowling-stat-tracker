@@ -6,11 +6,6 @@ and returns the frame-by-frame score line as a single string, e.g.:
 
     X X X 7- 33 X X X X3/
 
-Runs entirely locally through Ollama - no API key, no internet required, no
-per-image cost. Accuracy on this stylized LED font will vary more than a
-frontier hosted model (Claude/GPT-4-class) would give you, so test it
-against a few of your real scoreboard photos before relying on it.
-
 DESIGN NOTE
 -----------
 The vision model is only asked to read the raw sequence of roll symbols,
@@ -20,15 +15,6 @@ strike or spare in frame 10 adds bonus rolls) - that's deterministic logic,
 not something to leave to an LLM's judgement. So the model just reads
 pixels, and parse_frames() in this file does the grouping in plain Python,
 which will be 100% consistent as long as the raw symbol reading is correct.
-
-Requires:
-    ollama pulled and running locally (https://ollama.com)
-    ollama pull qwen2.5vl            (or a lighter model, see MODEL below)
-    pip install ollama
-
-To point at a different Ollama host (e.g. once this moves onto its own
-Render service), set the OLLAMA_HOST environment variable - the ollama
-client reads it automatically, no code change needed here.
 
 Usage as a script (run from the backend/ directory):
     python -m app.ocr path/to/photo.png
@@ -42,11 +28,11 @@ Usage as an import (e.g. from a FastAPI route):
 import re
 import sys
 
-import ollama
+import os
+import google.generativeai as genai
 
-# Swap this for a different pulled model to compare accuracy/speed, e.g.
-# "moondream" (much smaller/faster, less accurate) or "llama3.2-vision".
-MODEL = "qwen2.5vl"
+genai.configure(api_key=os.environ["GEMINI_API_KEY"])
+MODEL = "gemini-3.6-flash"
 
 PROMPT = """This is a photo of a bowling alley's LED scoreboard display.
 
@@ -112,22 +98,18 @@ def parse_frames(raw_symbols: list[str]) -> str:
 
 
 def read_scoreboard(image_bytes: bytes) -> str:
-    """Send scoreboard image bytes to the local Ollama model, then deterministically group the returned rolls into frames."""
-    response = ollama.chat(
-        model=MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": PROMPT,
-                "images": [image_bytes],
-            }
-        ],
+    """Send scoreboard image bytes to the model, then deterministically group the returned rolls into frames."""
+    response = genai.GenerativeModel(MODEL).generate_content(
+        [
+            {"mime_type": "image/png", "data": image_bytes},
+            PROMPT,
+        ]
     )
-    raw = response["message"]["content"].strip()
+    raw = response.text.strip()
 
     # Be forgiving of formatting the model might slip in anyway (spaces,
     # stray newlines, bullet punctuation) - keep only the roll symbols.
-    tokens = re.findall(r"X|[0-9]|/|-", raw.replace(",", " "))
+    tokens = re.findall(r"X|[0-9]|/|-|F", raw.replace(",", " "))
 
     if not tokens:
         # Nothing usable came back - surface the raw text so it's visible
@@ -138,6 +120,9 @@ def read_scoreboard(image_bytes: bytes) -> str:
 
 
 if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+
     from app.convert import to_png_bytes
 
     if len(sys.argv) != 2:
