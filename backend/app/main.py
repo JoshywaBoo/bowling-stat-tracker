@@ -30,9 +30,22 @@ from app.convert import to_png_bytes
 from app.db import execute, get_db, insert_and_get_id
 from app.ocr import read_scoreboard
 
+from fastapi.middleware.cors import CORSMiddleware
+
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 app = FastAPI(title="Bowling Scoreboard Reader")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://bowling-stat-tracker.vercel.app",
+        "http://localhost:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # main.py -> parent is app/, parent.parent is backend/, parent.parent.parent is the repo root
 BACKEND_DIR = Path(__file__).resolve().parent.parent
