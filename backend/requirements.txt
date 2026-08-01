@@ -1,9 +1,9 @@
 fastapi
 uvicorn[standard]
 python-multipart
-ollama
 pillow
 pillow-heif
 email-validator
 psycopg2-binary
 python-dotenv
+google-generativeai
