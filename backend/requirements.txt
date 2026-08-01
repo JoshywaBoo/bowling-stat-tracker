@@ -8,3 +8,5 @@ psycopg2-binary
 python-dotenv
 google-generativeai
 resend
+opencv-python-headless
+numpy
