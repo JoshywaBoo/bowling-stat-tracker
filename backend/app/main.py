@@ -249,4 +249,4 @@ def delete_game(game_id: int, user: dict = Depends(auth.get_current_user)):
 
 
 # Serve the frontend last so it doesn't shadow the /api and /images routes above.
-app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="static")
+# app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="static")
