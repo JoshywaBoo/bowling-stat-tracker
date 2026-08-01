@@ -1153,7 +1153,9 @@
       if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
       }
-      resultThumb.src = data.preview_image;
+      resultThumb.src = data.preview_image.startsWith('data:')
+        ? dataUrlToBlobUrl(data.preview_image)
+        : data.preview_image;
       resultEl.classList.add('visible');
     } catch {
       if (token !== queueRequestToken) return;
@@ -1169,6 +1171,15 @@
         discardBtn.disabled = false;
       }
     }
+  }
+
+  function dataUrlToBlobUrl(dataUrl) {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/data:(.*?);base64/)[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
   }
 
   // ------------------------------------------------------------- auth UI
@@ -1653,12 +1664,16 @@ fileInput.addEventListener('change', () => {
 
       const selectWrap = document.createElement('div');
       selectWrap.className = 'player-select';
+
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.checked = player.selected;
       checkbox.title = 'Include this player when saving';
       checkbox.addEventListener('change', () => {
         player.selected = checkbox.checked;
+        if (players.length > 1) {
+          resultScoreEl.textContent = `${players.filter(p => p.selected).length}/${players.length} selected`;
+        }
       });
       selectWrap.appendChild(checkbox);
       row.appendChild(selectWrap);
