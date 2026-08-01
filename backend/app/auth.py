@@ -168,16 +168,21 @@ def get_current_user_optional(request: Request) -> dict | None:
     return _get_user_from_token(token) if token else None
 
 
-def set_session_cookie(response, token: str) -> None:
+def set_session_cookie(response, token):
     response.set_cookie(
-        key=SESSION_COOKIE_NAME,
+        key="session",
         value=token,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="lax",
-        max_age=int(SESSION_LIFETIME.total_seconds()),
+        secure=True,
+        samesite="none",
+        max_age=60 * 60 * 24 * 30,
     )
 
 
-def clear_session_cookie(response) -> None:
-    response.delete_cookie(SESSION_COOKIE_NAME)
+def clear_session_cookie(response):
+    response.delete_cookie(
+        key="session",
+        httponly=True,
+        secure=True,
+        samesite="none",
+    )
