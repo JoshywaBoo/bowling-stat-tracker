@@ -633,6 +633,57 @@
     text-align: center;
     padding: 20px 0;
   }
+
+  .player-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .player-row:last-child { border-bottom: none; }
+
+  .player-row-main { flex: 1; min-width: 0; }
+
+  .player-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--amber);
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 2px 0;
+    margin-bottom: 8px;
+    width: 100%;
+    max-width: 220px;
+  }
+  .player-name-input:hover,
+  .player-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--amber-dim);
+  }
+
+  .player-row .frames {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .player-select {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: 4px;
+  }
+  .player-select input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--cyan);
+    cursor: pointer;
+  }
+  
+  .hide-checkboxes .player-select { display: none; }
 </style>
 </head>
 <body>
@@ -760,7 +811,7 @@
         <label for="edited-datetime">Date / time</label>
         <input type="datetime-local" id="edited-datetime" />
       </div>
-      <div class="frames" id="frames"></div>
+      <div class="player-rows" id="player-rows"></div>
       <div class="thumb-row">
         <img id="result-thumb" alt="Uploaded scoreboard" />
       </div>
@@ -902,7 +953,7 @@
   const fileInput = document.getElementById('file-input');
   const statusEl = document.getElementById('status');
   const resultEl = document.getElementById('result');
-  const framesEl = document.getElementById('frames');
+  const playerRowsEl = document.getElementById('player-rows');
   const resultThumb = document.getElementById('result-thumb');
   const historyList = document.getElementById('history-list');
   const saveBtn = document.getElementById('save-btn');
@@ -933,16 +984,9 @@
   let pendingUpload = null;
   let pendingEdit = null; // { gameId }
 
-  // The single source of truth while editing: a flat, in-order list of roll
-  // symbols. Frame boxes are just a *view* of this array, recomputed with
-  // parseFrames() after every edit - mirrors parse_frames() in ocr.py so the
-  // grouping the user sees always matches what the backend would produce.
-  let rollSymbols = [];
-
-  // Where to restore focus after a re-render, expressed as a position in the
-  // flat rollSymbols array (not a frame/box position, since boxes get
-  // rebuilt from scratch on every edit).
-  let pendingCursor = null; // { global: number } | null
+  // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
+  // Single-player flows (editing a saved game) just use a 1-item array.
+  let players = [];
 
   // Only these symbols are ever valid on a bowling scoreboard roll.
   const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
@@ -1066,9 +1110,8 @@
     // Clear stale state/UI right away so a click during the wait can't
     // act on the previous photo's data.
     pendingUpload = null;
-    rollSymbols = [];
-    pendingCursor = null;
-    framesEl.innerHTML = '';
+    players = [];
+    playerRowsEl.innerHTML = '';
     resultScoreEl.textContent = '0';
     if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
       URL.revokeObjectURL(resultThumb.src);
@@ -1088,8 +1131,13 @@
 
       setStatus('');
       pendingUpload = { imageKey: '' };
-      rollSymbols = flattenFrameString(data.frame_string);
-      pendingCursor = null;
+      players = data.players.map(p => ({
+        name: p.name || '',
+        rollSymbols: flattenFrameString(p.frame_string),
+        pendingCursor: null,
+        selected: true,
+      }));
+      playerRowsEl.classList.remove('hide-checkboxes');
       editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
       renderEditableFrames();
 
@@ -1101,10 +1149,10 @@
     } catch {
       if (token !== queueRequestToken) return;
       setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
-      framesEl.innerHTML = '';
+      playerRowsEl.innerHTML = '';
       resultThumb.removeAttribute('src');
       resultScoreEl.textContent = '0';
-      rollSymbols = [];
+      players = [];
       resultEl.classList.add('visible');
     } finally {
       if (token === queueRequestToken) {
@@ -1498,78 +1546,118 @@ fileInput.addEventListener('change', () => {
   // If an edit pushes symbols past frame 10 (e.g. the OCR misread a digit
   // from the running score total as an extra roll), the overflow is
   // dropped rather than shown as a phantom 11th frame.
-  function enforceCapacity() {
-    const frames = parseFrames(rollSymbols);
+  function enforceCapacity(player) {
+    const frames = parseFrames(player.rollSymbols);
     if (frames.length <= 10) return;
     const keepLength = frames.slice(0, 10).reduce((sum, f) => sum + f.length, 0);
-    rollSymbols = rollSymbols.slice(0, keepLength);
-    if (pendingCursor) {
-      pendingCursor.global = Math.min(pendingCursor.global, rollSymbols.length);
+    player.rollSymbols = player.rollSymbols.slice(0, keepLength);
+    if (player.pendingCursor) {
+      player.pendingCursor.global = Math.min(player.pendingCursor.global, player.rollSymbols.length);
     }
   }
 
   function renderEditableFrames() {
-    enforceCapacity();
-    framesEl.innerHTML = '';
-    const frames = parseFrames(rollSymbols);
-    const displayFrames = frames.length ? frames : [''];
+    playerRowsEl.innerHTML = '';
+    let totalScore = 0;
 
-    resultScoreEl.textContent = calculateBowlingScore(frames.join(' '));
+    players.forEach((player, playerIdx) => {
+      enforceCapacity(player);
+      const frames = parseFrames(player.rollSymbols);
+      const displayFrames = frames.length ? frames : [''];
+      const playerScore = calculateBowlingScore(frames.join(' '));
+      if (typeof playerScore === 'number') totalScore += playerScore;
 
-    let offset = 0;
-    const inputs = [];
+      const row = document.createElement('div');
+      row.className = 'player-row';
 
-    displayFrames.forEach((f, idx) => {
-      const cell = document.createElement('div');
-      cell.className = 'frame-cell';
+      const main = document.createElement('div');
+      main.className = 'player-row-main';
 
-      const n = document.createElement('span');
-      n.className = 'frame-n';
-      n.textContent = idx + 1;
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'player-name-input';
+      nameInput.placeholder = 'Player name';
+      nameInput.value = player.name;
+      nameInput.addEventListener('input', () => {
+        player.name = nameInput.value;
+      });
+      main.appendChild(nameInput);
 
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'frame-input' + (f.includes('X') ? ' strike' : '');
-      input.value = f;
-      input.autocomplete = 'off';
-      input.spellcheck = false;
-      input.dataset.start = offset;
-      input.dataset.len = f.length;
+      const framesRow = document.createElement('div');
+      framesRow.className = 'frames';
 
-      // Fallback for edits that skip our keydown handling entirely (paste,
-      // IME composition, mobile autocomplete/virtual keyboards): resync
-      // this box's slice of rollSymbols from whatever ended up in the DOM.
-      input.addEventListener('input', () => {
-        const start = parseInt(input.dataset.start, 10);
-        const len = parseInt(input.dataset.len, 10);
-        const clean = sanitizeText(input.value);
-        rollSymbols.splice(start, len, ...clean.split(''));
-        pendingCursor = { global: start + clean.length };
-        renderEditableFrames();
+      let offset = 0;
+      const inputs = [];
+
+      displayFrames.forEach((f, idx) => {
+        const cell = document.createElement('div');
+        cell.className = 'frame-cell';
+
+        const n = document.createElement('span');
+        n.className = 'frame-n';
+        n.textContent = idx + 1;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'frame-input' + (f.includes('X') ? ' strike' : '');
+        input.value = f;
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+        input.dataset.player = playerIdx;
+        input.dataset.start = offset;
+        input.dataset.len = f.length;
+
+        input.addEventListener('input', () => {
+          const start = parseInt(input.dataset.start, 10);
+          const len = parseInt(input.dataset.len, 10);
+          const clean = sanitizeText(input.value);
+          player.rollSymbols.splice(start, len, ...clean.split(''));
+          player.pendingCursor = { global: start + clean.length };
+          renderEditableFrames();
+        });
+
+        offset += f.length;
+        cell.appendChild(n);
+        cell.appendChild(input);
+        framesRow.appendChild(cell);
+        inputs.push(input);
       });
 
-      offset += f.length;
-      cell.appendChild(n);
-      cell.appendChild(input);
-      framesEl.appendChild(cell);
-      inputs.push(input);
+      main.appendChild(framesRow);
+      row.appendChild(main);
+
+      const selectWrap = document.createElement('div');
+      selectWrap.className = 'player-select';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = player.selected;
+      checkbox.title = 'Include this player when saving';
+      checkbox.addEventListener('change', () => {
+        player.selected = checkbox.checked;
+      });
+      selectWrap.appendChild(checkbox);
+      row.appendChild(selectWrap);
+
+      playerRowsEl.appendChild(row);
+      restoreCursor(inputs, player);
     });
 
-    restoreCursor(inputs);
+    resultScoreEl.textContent = players.length === 1
+      ? calculateBowlingScore(parseFrames(players[0].rollSymbols).join(' '))
+      : `${players.filter(p => p.selected).length}/${players.length} selected`;
   }
 
-  function restoreCursor(inputs) {
-    if (!pendingCursor || !inputs.length) return;
-
+  function restoreCursor(inputs, player) {
+    if (!player.pendingCursor || !inputs.length) return;
     let cum = 0;
     let target = inputs[inputs.length - 1];
     let localPos = target.value.length;
 
     for (const input of inputs) {
       const len = input.value.length;
-      if (pendingCursor.global <= cum + len) {
+      if (player.pendingCursor.global <= cum + len) {
         target = input;
-        localPos = pendingCursor.global - cum;
+        localPos = player.pendingCursor.global - cum;
         break;
       }
       cum += len;
@@ -1586,20 +1674,22 @@ fileInput.addEventListener('change', () => {
     return [base + input.selectionStart, base + input.selectionEnd];
   }
 
-  framesEl.addEventListener('keydown', (e) => {
+  playerRowsEl.addEventListener('keydown', (e) => {
     const input = e.target;
     if (!input.classList.contains('frame-input')) return;
 
+    const playerIdx = parseInt(input.dataset.player, 10);
+    const player = players[playerIdx];
     const [gStart, gEnd] = globalSelection(input);
 
     if (e.key === 'Backspace') {
       e.preventDefault();
       if (gStart !== gEnd) {
-        rollSymbols.splice(gStart, gEnd - gStart);
-        pendingCursor = { global: gStart };
+        player.rollSymbols.splice(gStart, gEnd - gStart);
+        player.pendingCursor = { global: gStart };
       } else if (gStart > 0) {
-        rollSymbols.splice(gStart - 1, 1);
-        pendingCursor = { global: gStart - 1 };
+        player.rollSymbols.splice(gStart - 1, 1);
+        player.pendingCursor = { global: gStart - 1 };
       } else {
         return;
       }
@@ -1610,11 +1700,11 @@ fileInput.addEventListener('change', () => {
     if (e.key === 'Delete') {
       e.preventDefault();
       if (gStart !== gEnd) {
-        rollSymbols.splice(gStart, gEnd - gStart);
-        pendingCursor = { global: gStart };
-      } else if (gStart < rollSymbols.length) {
-        rollSymbols.splice(gStart, 1);
-        pendingCursor = { global: gStart };
+        player.rollSymbols.splice(gStart, gEnd - gStart);
+        player.pendingCursor = { global: gStart };
+      } else if (gStart < player.rollSymbols.length) {
+        player.rollSymbols.splice(gStart, 1);
+        player.pendingCursor = { global: gStart };
       } else {
         return;
       }
@@ -1622,31 +1712,29 @@ fileInput.addEventListener('change', () => {
       return;
     }
 
-    // At a box edge, jump into the adjacent box instead of getting stuck.
+    // Arrow-key box jumping now needs to stay within THIS player's inputs only.
     if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) {
-      const inputs = Array.from(framesEl.querySelectorAll('.frame-input'));
-      const idx = inputs.indexOf(input) - 1;
+      const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
+      const idx = rowInputs.indexOf(input) - 1;
       if (idx >= 0) {
         e.preventDefault();
-        inputs[idx].focus();
-        const end = inputs[idx].value.length;
-        inputs[idx].setSelectionRange(end, end);
+        rowInputs[idx].focus();
+        const end = rowInputs[idx].value.length;
+        rowInputs[idx].setSelectionRange(end, end);
       }
       return;
     }
     if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && input.selectionEnd === input.value.length) {
-      const inputs = Array.from(framesEl.querySelectorAll('.frame-input'));
-      const idx = inputs.indexOf(input) + 1;
-      if (idx < inputs.length) {
+      const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
+      const idx = rowInputs.indexOf(input) + 1;
+      if (idx < rowInputs.length) {
         e.preventDefault();
-        inputs[idx].focus();
-        inputs[idx].setSelectionRange(0, 0);
+        rowInputs[idx].focus();
+        rowInputs[idx].setSelectionRange(0, 0);
       }
       return;
     }
 
-    // Any other single printable character: insert/replace in the flat
-    // array, which reflows every box after it.
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
       const upper = e.key.toUpperCase();
       if (!ALLOWED_SYMBOL.test(upper)) {
@@ -1654,16 +1742,11 @@ fileInput.addEventListener('change', () => {
         return;
       }
       e.preventDefault();
-      rollSymbols.splice(gStart, gEnd - gStart, upper);
-      pendingCursor = { global: gStart + 1 };
+      player.rollSymbols.splice(gStart, gEnd - gStart, upper);
+      player.pendingCursor = { global: gStart + 1 };
       renderEditableFrames();
     }
   });
-
-  function collectFrameString() {
-    if (!rollSymbols.length) return null;
-    return parseFrames(rollSymbols).join(' ');
-  }
 
   function formatTime(iso) {
     try {
@@ -1879,8 +1962,13 @@ fileInput.addEventListener('change', () => {
     resetResultPanel();
     queueSuspendedForEdit = suspendQueue;
     pendingEdit = { gameId: game.id };
-    rollSymbols = flattenFrameString(game.frame_string);
-    pendingCursor = null;
+    players = [{
+      name: game.player_name || '',
+      rollSymbols: flattenFrameString(game.frame_string),
+      pendingCursor: null,
+      selected: true,
+    }];
+    playerRowsEl.classList.add('hide-checkboxes');
     editedDateTimeInput.value = formatDateTimeInput(game.created_at);
     renderEditableFrames();
     resultThumb.removeAttribute('src');
@@ -1963,11 +2051,11 @@ fileInput.addEventListener('change', () => {
     discardBtn.disabled = false;
     pendingUpload = null;
     pendingEdit = null;
-    rollSymbols = [];
-    pendingCursor = null;
+    players = [];
+    playerRowsEl.innerHTML = '';
+    playerRowsEl.classList.remove('hide-checkboxes');
     resultEl.classList.remove('visible');
     resultScoreEl.textContent = '0';
-    framesEl.innerHTML = '';
     saveError.textContent = '';
     fileInput.value = '';
     editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
@@ -1978,66 +2066,106 @@ fileInput.addEventListener('change', () => {
     resultThumb.removeAttribute('src');
   }
 
+  function collectFrameStringFor(player) {
+    if (!player.rollSymbols.length) return null;
+    return parseFrames(player.rollSymbols).join(' ');
+  }
+
   saveBtn.addEventListener('click', async () => {
     if (!pendingUpload && !pendingEdit) return;
 
     saveError.textContent = '';
-    const frameString = collectFrameString();
-    if (frameString === null) {
-      saveError.textContent = 'Add at least one roll before saving.';
-      return;
-    }
 
-    const validationError = validateGame(rollSymbols);
-    if (validationError) {
-      saveError.textContent = validationError;
-      return;
-    }
+    const selectedPlayers = players.filter(p => p.selected);
+
+    if (pendingEdit) {
+          const player = players[0];
+          const frameString = collectFrameStringFor(player);
+          if (frameString === null) {
+            saveError.textContent = 'Add at least one roll before saving.';
+            return;
+          }
+          const validationError = validateGame(player.rollSymbols);
+          if (validationError) {
+            saveError.textContent = validationError;
+            return;
+          }
+
+          saveBtn.disabled = true;
+          saveBtn.textContent = 'Saving…';
+
+          try {
+            const createdAtValue = editedDateTimeInput.value
+              ? new Date(editedDateTimeInput.value).toISOString()
+              : null;
+
+            const res = await fetch(`${API_BASE}/api/games/${pendingEdit.gameId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                frame_string: frameString,
+                player_name: player.name || null,
+                created_at: createdAtValue,
+              }),
+            });
+
+            if (res.status === 401) {
+              showLoggedOut();
+              return;
+            }
+
+            const data = await res.json();
+
+            if (!res.ok) {
+              saveError.textContent = data.detail || 'Could not save this game.';
+              return;
+            }
+
+            if (queueSuspendedForEdit) {
+              queueSuspendedForEdit = false;
+              showQueueItem(queueIndex); // back to the queue photo we paused on
+            } else {
+              resetResultPanel();
+            }
+            loadHistory();
+          } catch {
+            saveError.textContent = 'Could not reach the server.';
+          } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save changes';
+          }
+          return;
+        }
 
     saveBtn.disabled = true;
     saveBtn.textContent = 'Saving…';
 
     try {
       const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
-      let res;
-      if (pendingEdit) {
-        res = await fetch(`${API_BASE}/api/games/${pendingEdit.gameId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ frame_string: frameString, created_at: createdAtValue }),
-        });
-      } else {
-        res = await fetch(`${API_BASE}/api/games`, {
+
+      for (const player of selectedPlayers) {
+        const res = await fetch(`${API_BASE}/api/games`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ image_key: pendingUpload.imageKey, frame_string: frameString, created_at: createdAtValue }),
+          body: JSON.stringify({
+            image_key: pendingUpload.imageKey,
+            frame_string: collectFrameStringFor(player),
+            player_name: player.name || null,
+            created_at: createdAtValue,
+          }),
         });
-      }
-
-      if (res.status === 401) {
-        showLoggedOut();
-        return;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        saveError.textContent = data.detail || 'Could not save this game.';
-        return;
-      }
-
-      if (pendingEdit) {
-        // Was editing a saved game, not confirming a queue upload.
-        if (queueSuspendedForEdit) {
-          queueSuspendedForEdit = false;
-          showQueueItem(queueIndex); // back to the queue photo we paused on
-        } else {
-          resetResultPanel();
+        if (res.status === 401) { showLoggedOut(); return; }
+        const data = await res.json();
+        if (!res.ok) {
+          saveError.textContent = `${player.name || 'A player'}: ${data.detail || 'Could not save.'}`;
+          return;
         }
-      } else if (uploadQueue.length) {
-        showQueueItem(queueIndex + 1); // confirmed this queue photo, advance
+      }
+
+      if (uploadQueue.length) {
+        showQueueItem(queueIndex + 1);
       } else {
         resetResultPanel();
       }
