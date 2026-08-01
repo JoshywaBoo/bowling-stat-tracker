@@ -746,7 +746,7 @@
       <p class="primary">Drop a scoreboard photo, or click to choose one</p>
       <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
     </label>
-    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" />
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
 
     <p class="status" id="status"></p>
 
@@ -764,6 +764,7 @@
       <div class="thumb-row">
         <img id="result-thumb" alt="Uploaded scoreboard" />
       </div>
+      <p class="status" id="queue-progress"></p>
       <div class="result-actions">
         <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
         <button type="button" class="btn-discard" id="discard-btn">Discard</button>
@@ -912,8 +913,16 @@
 
   let authMode = 'login';
 
-  // Tracks the scoreboard currently under review (parsed but not yet saved).
-  let pendingUpload = null; // { imageKey }
+  // Each entry: { file, promise, result, error }
+  // - promise resolves to the parsed /api/upload response (or rejects on failure)
+  // - result/error get filled in once the promise settles, so showQueueItem()
+  //   doesn't need to re-await something that already finished
+  let uploadQueue = [];
+  let queueIndex = 0;
+  let queueSuspendedForEdit = false;
+
+  const PREFETCH_AHEAD = 2; // how many uploads to have in flight at once
+  let pendingUpload = null;
   let pendingEdit = null; // { gameId }
 
   // The single source of truth while editing: a flat, in-order list of roll
@@ -980,6 +989,86 @@
     if (normalized === '-' || normalized === 'F') return 0;
     const value = Number(normalized);
     return Number.isFinite(value) ? value : 0;
+  }
+
+  function kickOffUpload(entry) {
+    const formData = new FormData();
+    formData.append('file', entry.file);
+    formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
+
+    entry.promise = fetch(`${API_BASE}/api/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        entry.result = data;
+        return data;
+      })
+      .catch((err) => {
+        entry.error = err.message || 'Upload failed';
+        throw err;
+      });
+  }
+
+  function ensurePrefetched(uptoIndex) {
+    const end = Math.min(uploadQueue.length, uptoIndex + PREFETCH_AHEAD);
+    for (let i = queueIndex; i < end; i++) {
+      if (!uploadQueue[i].promise) kickOffUpload(uploadQueue[i]);
+    }
+  }
+
+  function startUploadQueue(files) {
+    resetResultPanel();
+    uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
+    queueIndex = 0;
+    ensurePrefetched(0);
+    showQueueItem(0);
+  }
+
+  async function showQueueItem(index) {
+    if (index >= uploadQueue.length) {
+      // queue finished
+      document.getElementById('queue-progress').textContent = '';
+      resultEl.classList.remove('visible');
+      setStatus('All photos processed.');
+      loadHistory();
+      return;
+    }
+
+    queueIndex = index;
+    const entry = uploadQueue[index];
+    document.getElementById('queue-progress').textContent =
+      `Photo ${index + 1} of ${uploadQueue.length}`;
+
+    ensurePrefetched(index); // top up the prefetch window
+
+    setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
+
+    try {
+      const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
+      setStatus('');
+      pendingUpload = { imageKey: '' };
+      rollSymbols = flattenFrameString(data.frame_string);
+      pendingCursor = null;
+      editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
+      renderEditableFrames();
+
+      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+        URL.revokeObjectURL(resultThumb.src);
+      }
+      resultThumb.src = data.preview_image;
+      resultEl.classList.add('visible');
+    } catch {
+      setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
+      framesEl.innerHTML = '';
+      resultThumb.removeAttribute('src');
+      resultScoreEl.textContent = '0';
+      rollSymbols = [];
+      resultEl.classList.add('visible'); // keep panel open so Discard can skip it
+    }
   }
 
   // ------------------------------------------------------------- auth UI
@@ -1339,13 +1428,13 @@
   ['dragleave', 'drop'].forEach(evt =>
     dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
   );
-  dropzone.addEventListener('drop', e => {
-    const file = e.dataTransfer.files[0];
-    if (file) uploadFile(file);
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) uploadFile(fileInput.files[0]);
-  });
+ dropzone.addEventListener('drop', e => {
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) startUploadQueue(files);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) startUploadQueue(Array.from(fileInput.files));
+});
 
   function setStatus(msg, isError = false) {
     statusEl.textContent = msg;
@@ -1740,7 +1829,9 @@
   }
 
   function openGameForEditing(game) {
+    const suspendQueue = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
     resetResultPanel();
+    queueSuspendedForEdit = suspendQueue;
     pendingEdit = { gameId: game.id };
     rollSymbols = flattenFrameString(game.frame_string);
     pendingCursor = null;
@@ -1838,46 +1929,6 @@
     resultThumb.removeAttribute('src');
   }
 
-  async function uploadFile(file) {
-    setStatus('Reading scoreboard…');
-    resetResultPanel();
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
-
-      if (res.status === 401) {
-        setStatus('');
-        showLoggedOut();
-        return;
-      }
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setStatus(data.detail || 'Something went wrong.', true);
-        return;
-      }
-
-      setStatus('');
-      pendingUpload = { imageKey: '' };
-      rollSymbols = flattenFrameString(data.frame_string);
-      pendingCursor = null;
-      editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
-      renderEditableFrames();
-
-      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
-        URL.revokeObjectURL(resultThumb.src);
-      }
-      resultThumb.src = data.preview_image;
-      resultEl.classList.add('visible');
-    } catch (err) {
-      setStatus('Upload failed - is the server running?', true);
-    }
-  }
-
   saveBtn.addEventListener('click', async () => {
     if (!pendingUpload && !pendingEdit) return;
 
@@ -1928,7 +1979,19 @@
         return;
       }
 
-      resetResultPanel();
+      if (pendingEdit) {
+        // Was editing a saved game, not confirming a queue upload.
+        if (queueSuspendedForEdit) {
+          queueSuspendedForEdit = false;
+          showQueueItem(queueIndex); // back to the queue photo we paused on
+        } else {
+          resetResultPanel();
+        }
+      } else if (uploadQueue.length) {
+        showQueueItem(queueIndex + 1); // confirmed this queue photo, advance
+      } else {
+        resetResultPanel();
+      }
       loadHistory();
     } catch {
       saveError.textContent = 'Could not reach the server.';
@@ -1939,7 +2002,20 @@
   });
 
   discardBtn.addEventListener('click', () => {
-    resetResultPanel();
+    if (pendingEdit) {
+      if (queueSuspendedForEdit) {
+        queueSuspendedForEdit = false;
+        showQueueItem(queueIndex); // cancel edit, back to paused queue photo
+      } else {
+        resetResultPanel();
+      }
+      return;
+    }
+    if (uploadQueue.length) {
+      showQueueItem(queueIndex + 1); // skip this queue photo
+    } else {
+      resetResultPanel();
+    }
   });
 
   checkSession();
