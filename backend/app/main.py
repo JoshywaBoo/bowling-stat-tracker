@@ -15,6 +15,7 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import secrets
 from app.email import send_email_code
+import base64
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
@@ -322,6 +323,7 @@ async def upload_scoreboard(
 
     return {
         "frame_string": frame_string,
+        "preview_image": "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii"),
     }
 
 

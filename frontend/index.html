@@ -1832,7 +1832,7 @@
     fileInput.value = '';
     editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
     saveBtn.textContent = 'Save game';
-    if (resultThumb.src) {
+    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
       URL.revokeObjectURL(resultThumb.src);
     }
     resultThumb.removeAttribute('src');
@@ -1868,11 +1868,10 @@
       editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
       renderEditableFrames();
 
-      const previewUrl = URL.createObjectURL(file);
-      if (resultThumb.src) {
+      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
       }
-      resultThumb.src = previewUrl;
+      resultThumb.src = data.preview_image;
       resultEl.classList.add('visible');
     } catch (err) {
       setStatus('Upload failed - is the server running?', true);
