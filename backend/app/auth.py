@@ -343,7 +343,7 @@ def reset_password(email, code, new_password):
 
 def set_session_cookie(response, token):
     response.set_cookie(
-        key="session",
+        key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         secure=COOKIE_SECURE,
@@ -354,7 +354,7 @@ def set_session_cookie(response, token):
 
 def clear_session_cookie(response):
     response.delete_cookie(
-        key="session",
+        key=SESSION_COOKIE_NAME,
         httponly=True,
         secure=COOKIE_SECURE,
         samesite="none" if COOKIE_SECURE else "lax",
