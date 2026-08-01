@@ -65,6 +65,7 @@ def init_db() -> None:
                 id BIGSERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 image_key TEXT NOT NULL,
+                player_name TEXT,
                 frame_string TEXT NOT NULL,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
@@ -80,6 +81,7 @@ init_db()
 def row_to_game(row: sqlite3.Row) -> dict:
     return {
         "id": row["id"],
+        "player_name": row["player_name"],
         "frame_string": row["frame_string"],
         "created_at": row["created_at"],
     }
@@ -285,11 +287,13 @@ def reset_password(
 class ConfirmGameRequest(BaseModel):
     image_key: str
     frame_string: str
+    player_name: str | None = None
     created_at: str | None = None
 
 
 class UpdateGameRequest(BaseModel):
     frame_string: str
+    player_name: str | None = None
     created_at: str | None = None
 
 
@@ -331,21 +335,18 @@ async def upload_scoreboard(
 def confirm_game(
     payload: ConfirmGameRequest, user: dict = Depends(auth.get_current_user)
 ):
-    """Save a (possibly user-edited) frame_string for a previously uploaded image.
-
-    Called after the user reviews/corrects the OCR result returned by
-    POST /api/upload.
-    """
     created_at_value = payload.created_at or datetime.now(timezone.utc).isoformat()
     with get_db() as conn:
         game_id = insert_and_get_id(
             conn,
-            "INSERT INTO games (user_id, image_key, frame_string, created_at) VALUES (?, ?, ?, ?) RETURNING id",
-            (user["id"], "", payload.frame_string, created_at_value),
+            "INSERT INTO games (user_id, image_key, player_name, frame_string, created_at) "
+            "VALUES (?, ?, ?, ?, ?) RETURNING id",
+            (user["id"], "", payload.player_name, payload.frame_string, created_at_value),
         )
 
     return {
         "id": game_id,
+        "player_name": payload.player_name,
         "frame_string": payload.frame_string,
         "created_at": created_at_value,
     }
@@ -356,7 +357,7 @@ def list_games(user: dict = Depends(auth.get_current_user)):
     with get_db() as conn:
         rows = execute(
             conn,
-            "SELECT id, image_key, frame_string, created_at FROM games "
+            "SELECT id, image_key, player_name, frame_string, created_at FROM games "
             "WHERE user_id = ? ORDER BY id DESC",
             (user["id"],),
         ).fetchall()
@@ -385,14 +386,14 @@ def update_game(
         if payload.created_at:
             execute(
                 conn,
-                "UPDATE games SET frame_string = ?, created_at = ? WHERE id = ?",
-                (payload.frame_string, payload.created_at, game_id),
+                "UPDATE games SET frame_string = ?, player_name = ?, created_at = ? WHERE id = ?",
+                (payload.frame_string, payload.player_name, payload.created_at, game_id),
             )
         else:
             execute(
                 conn,
-                "UPDATE games SET frame_string = ? WHERE id = ?",
-                (payload.frame_string, game_id),
+                "UPDATE games SET frame_string = ?, player_name = ? WHERE id = ?",
+                (payload.frame_string, payload.player_name, game_id),
             )
 
     return {"ok": True}
