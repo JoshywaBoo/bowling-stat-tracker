@@ -600,6 +600,8 @@
 </main>
 
 <script>
+  const API_BASE = 'https://bowling-stat-tracker.onrender.com';
+
   const accountBar = document.getElementById('account-bar');
   const accountEmail = document.getElementById('account-email');
   const logoutBtn = document.getElementById('logout-btn');
@@ -730,12 +732,13 @@
     authError.textContent = '';
     authSubmit.disabled = true;
 
-    const endpoint = authMode === 'login' ? '/api/login' : '/api/signup';
+    const endpoint = authMode === 'login' ? `${API_BASE}/api/login` : `${API_BASE}/api/signup`;
 
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email: authEmail.value, password: authPassword.value }),
       });
       const data = await res.json();
@@ -755,13 +758,13 @@
   });
 
   logoutBtn.addEventListener('click', async () => {
-    await fetch('/api/logout', { method: 'POST' });
+    await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
     showLoggedOut();
   });
 
   async function checkSession() {
     try {
-      const res = await fetch('/api/me');
+      const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
       const user = await res.json();
       if (user) {
         showLoggedIn(user);
@@ -1199,7 +1202,7 @@
     if (editButton) {
       const gameId = Number(editButton.dataset.gameId);
       if (!gameId) return;
-      const game = (await fetch('/api/games').then(r => r.json())).find(item => item.id === gameId);
+      const game = (await fetch(`${API_BASE}/api/games`, { credentials: 'include' }).then(r => r.json())).find(item => item.id === gameId);
       if (game) {
         openGameForEditing(game);
       }
@@ -1213,7 +1216,7 @@
     if (!gameId) return;
 
     try {
-      const res = await fetch(`/api/games/${gameId}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/games/${gameId}`, { method: 'DELETE', credentials: 'include' });
       if (res.status === 401) {
         showLoggedOut();
         return;
@@ -1230,7 +1233,7 @@
 
   async function loadHistory() {
     try {
-      const res = await fetch('/api/games');
+      const res = await fetch(`${API_BASE}/api/games`, { credentials: 'include' });
       if (res.status === 401) { showLoggedOut(); return; }
       const games = await res.json();
       renderHistory(games);
@@ -1265,7 +1268,7 @@
     formData.append('file', file);
 
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const res = await fetch(`${API_BASE}/api/upload`, { method: 'POST', credentials: 'include', body: formData });
 
       if (res.status === 401) {
         setStatus('');
@@ -1321,15 +1324,17 @@
       const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
       let res;
       if (pendingEdit) {
-        res = await fetch(`/api/games/${pendingEdit.gameId}`, {
+        res = await fetch(`${API_BASE}/api/games/${pendingEdit.gameId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ frame_string: frameString, created_at: createdAtValue }),
         });
       } else {
-        res = await fetch('/api/games', {
+        res = await fetch(`${API_BASE}/api/games`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ image_key: pendingUpload.imageKey, frame_string: frameString, created_at: createdAtValue }),
         });
       }
