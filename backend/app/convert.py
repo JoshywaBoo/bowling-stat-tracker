@@ -20,8 +20,6 @@ import numpy as np
 import math
 import pillow_heif
 from PIL import Image, ImageOps
-from dotenv import load_dotenv
-load_dotenv()
 
 pillow_heif.register_heif_opener()
 
@@ -30,8 +28,8 @@ pillow_heif.register_heif_opener()
 # Override with MAX_IMAGE_DIMENSION env var if scoreboard text is coming out blurry.
 MAX_IMAGE_DIMENSION = int(os.environ.get("MAX_IMAGE_DIMENSION", "1000"))
 
-# downscale for detection only, not final output
-MAX_DETECTION_DIMENSION = int(os.environ.get("MAX_DETECTION_DIMENSION", "1000"))
+# Override with MAX_DETECTION_DIMENSION env var if detection is unreliable.
+MAX_DETECTION_DIMENSION = int(os.environ.get("MAX_DETECTION_DIMENSION", "2000"))
 
 # If the detected "screen" region is smaller than this fraction of the total
 # image area, treat detection as unreliable and skip cropping. Guards against
@@ -40,8 +38,7 @@ MIN_CROP_AREA_FRACTION = 0.03
 
 # Extra margin added around the detected screen so we don't clip the bezel
 # or the very edge of the scoreboard's outermost column.
-CROP_PADDING_FRACTION = 0.18
-
+CROP_PADDING_FRACTION = 0.04
 
 def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     arr = np.array(img)
@@ -56,15 +53,8 @@ def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     # Larger closing kernel than before (35 vs 15) - bridges small gaps
     # like the divider line between a scoreboard's score grid and its
     # info bar, so the whole screen forms one blob instead of fragmenting.
-
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((35, 35), np.uint8))
-    # Must be larger than the CLOSE kernel above, or bridges the CLOSE step
-    # creates (e.g. thin gaps to overhead truss/lighting) survive this step.
-    OPEN_KERNEL = int(os.environ.get("MASK_OPEN_KERNEL", "60"))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((OPEN_KERNEL, OPEN_KERNEL), np.uint8))
-
-    if os.environ.get("DEBUG_MASK"):
-        Image.fromarray(mask).save("debug_mask.png")
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
@@ -84,42 +74,15 @@ def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     def dist_to_center(box):
         x, y, w, h = box
         return math.hypot((x + w / 2) - img_cx, (y + h / 2) - img_cy)
-    
+
     x, y, w, h = min(candidates, key=dist_to_center)
 
-    # The bounding box can include stray extra area beyond the actual
-    # screen (e.g. a thin bridge up to overhead truss lighting, or a
-    # sliver of a neighboring monitor). Trim it down to its dense "core":
-    # scan rows/columns for how much of the mask is actually filled, and
-    # shrink each edge inward until it's solid. Thin sparse appendages
-    # get cut off.
-    sub_mask = mask[y:y + h, x:x + w] > 0
-    row_fill = sub_mask.mean(axis=1)
-    col_fill = sub_mask.mean(axis=0)
-
-    DENSITY_THRESHOLD = 0.5
-
-    def trim_indices(fill):
-        idx = np.where(fill >= DENSITY_THRESHOLD)[0]
-        if len(idx) == 0:
-            return 0, len(fill)
-        return int(idx[0]), int(idx[-1]) + 1
-
-    top, bottom = trim_indices(row_fill)
-    left, right = trim_indices(col_fill)
-
-    x0, y0 = x + left, y + top
-    x1, y1 = x + right, y + bottom
-
-    # Add back a margin so we don't clip the bezel or outermost column.
-    pad_w = int((x1 - x0) * CROP_PADDING_FRACTION)
-    pad_h = int((y1 - y0) * CROP_PADDING_FRACTION)
-    x0 = max(0, x0 - pad_w)
-    y0 = max(0, y0 - pad_h)
-    x1 = min(w_img, x1 + pad_w)
-    y1 = min(h_img, y1 + pad_h)
-
-    return x0, y0, x1, y1
+    pad_x, pad_y = int(w * CROP_PADDING_FRACTION), int(h * CROP_PADDING_FRACTION)
+    x0 = max(0, x - pad_x)
+    y0 = max(0, y - pad_y)
+    x1 = min(w_img, x + w + pad_x)
+    y1 = min(h_img, y + h + pad_y)
+    return (x0, y0, x1, y1)
 
 
 def to_png_bytes(
@@ -130,7 +93,12 @@ def to_png_bytes(
     """Decode arbitrary image bytes, downscale if needed, and re-encode as PNG bytes."""
     img = Image.open(BytesIO(raw_bytes))
 
+    # Respect camera orientation (EXIF) before doing anything else, otherwise
+    # a resize can lock in a sideways/upside-down image.
     img = ImageOps.exif_transpose(img)
+
+    if img.mode != "RGB":
+        img = img.convert("RGB")
 
     if img.mode != "RGB":
         img = img.convert("RGB")
@@ -138,9 +106,6 @@ def to_png_bytes(
     if auto_crop:
         width, height = img.size
         if max(width, height) > MAX_DETECTION_DIMENSION:
-            # Detect on a downscaled copy - cv2 ops on a 24MP+ array can
-            # use several hundred MB of intermediate buffers. Detection
-            # only needs enough detail to find the bright screen region.
             detect_scale = MAX_DETECTION_DIMENSION / max(width, height)
             detect_size = (
                 max(1, int(width * detect_scale)),
@@ -149,8 +114,6 @@ def to_png_bytes(
             detect_img = img.resize(detect_size, Image.BILINEAR)
             box = detect_scoreboard_box(detect_img)
             if box is not None:
-                # Scale the box back up so the crop happens on the
-                # full-resolution image, not the downscaled copy.
                 inv_scale = 1 / detect_scale
                 x0, y0, x1, y1 = box
                 img = img.crop((
