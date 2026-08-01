@@ -27,6 +27,7 @@ pillow_heif.register_heif_opener()
 # above roughly this range anyway, so sending more doesn't improve OCR accuracy.
 # Override with MAX_IMAGE_DIMENSION env var if scoreboard text is coming out blurry.
 MAX_IMAGE_DIMENSION = int(os.environ.get("MAX_IMAGE_DIMENSION", "1000"))
+MAX_DETECTION_DIMENSION = int(os.environ.get("MAX_DETECTION_DIMENSION", "1000"))  # downscale for detection only, not final output
 
 # If the detected "screen" region is smaller than this fraction of the total
 # image area, treat detection as unreliable and skip cropping. Guards against
@@ -90,20 +91,39 @@ def to_png_bytes(
     """Decode arbitrary image bytes, downscale if needed, and re-encode as PNG bytes."""
     img = Image.open(BytesIO(raw_bytes))
 
-    # Respect camera orientation (EXIF) before doing anything else, otherwise
-    # a resize can lock in a sideways/upside-down image.
     img = ImageOps.exif_transpose(img)
 
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    if img.mode != "RGB":
-        img = img.convert("RGB")
-
-    if auto_crop:                   
-        box = _detect_scoreboard_box(img)
-        if box is not None:
-            img = img.crop(box)
+    if auto_crop:
+        width, height = img.size
+        if max(width, height) > DETECTION_MAX_DIMENSION:
+            # Detect on a downscaled copy - cv2 ops on a 24MP+ array can
+            # use several hundred MB of intermediate buffers. Detection
+            # only needs enough detail to find the bright screen region.
+            detect_scale = DETECTION_MAX_DIMENSION / max(width, height)
+            detect_size = (
+                max(1, int(width * detect_scale)),
+                max(1, int(height * detect_scale)),
+            )
+            detect_img = img.resize(detect_size, Image.BILINEAR)
+            box = _detect_scoreboard_box(detect_img)
+            if box is not None:
+                # Scale the box back up so the crop happens on the
+                # full-resolution image, not the downscaled copy.
+                inv_scale = 1 / detect_scale
+                x0, y0, x1, y1 = box
+                img = img.crop((
+                    int(x0 * inv_scale),
+                    int(y0 * inv_scale),
+                    int(x1 * inv_scale),
+                    int(y1 * inv_scale),
+                ))
+        else:
+            box = _detect_scoreboard_box(img)
+            if box is not None:
+                img = img.crop(box)
 
     width, height = img.size
     if max(width, height) > max_dimension:
