@@ -687,6 +687,8 @@
 
   let pendingVerifyEmail = null;
   let pendingResetEmail = null;
+  let pendingVerifyPassword = null;
+  let verifyPollTimer = null;
 
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
@@ -787,6 +789,7 @@
   tabSignup.addEventListener('click', () => setAuthMode('signup'));
 
   function showLoggedOut() {
+    stopVerifyPolling();
     accountBar.classList.remove('visible');
     verifyPanel.classList.remove('visible');
     forgotPanel.classList.remove('visible');
@@ -794,14 +797,84 @@
     appContent.classList.remove('visible');
   }
 
-  function showVerifyScreen(email, hintMsg) {
+  function showVerifyScreen(email, hintMsg, password) {
     pendingVerifyEmail = email;
+    pendingVerifyPassword = password || null;
     authPanel.classList.remove('visible');
     forgotPanel.classList.remove('visible');
     verifyPanel.classList.add('visible');
     verifyError.textContent = '';
     verifyCode.value = '';
     verifyHint.textContent = hintMsg || `Enter the 6-digit code we emailed to ${email}.`;
+    startVerifyPolling();
+  }
+
+  function startVerifyPolling() {
+    stopVerifyPolling();
+    verifyPollTimer = setInterval(checkVerifyStatus, 3000);
+  }
+
+  function stopVerifyPolling() {
+    if (verifyPollTimer) {
+      clearInterval(verifyPollTimer);
+      verifyPollTimer = null;
+    }
+  }
+
+  async function checkVerifyStatus() {
+    if (!pendingVerifyEmail) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/verify-status?email=${encodeURIComponent(pendingVerifyEmail)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.verified) {
+        await completeAutoLogin();
+      }
+    } catch {
+      // transient network hiccup - just try again on the next tick
+    }
+  }
+
+  async function completeAutoLogin() {
+    stopVerifyPolling();
+    const email = pendingVerifyEmail;
+    const password = pendingVerifyPassword;
+    pendingVerifyEmail = null;
+    pendingVerifyPassword = null;
+
+    if (!password) {
+      // Page was reloaded, or user got here via the login-403 path on a
+      // different session - we don't have credentials cached, so just
+      // point them at sign-in instead of silently failing.
+      setAuthMode('login');
+      showLoggedOut();
+      authEmail.value = email || '';
+      authError.textContent = 'Email verified! Please sign in.';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthMode('login');
+        showLoggedOut();
+        authEmail.value = email;
+        authError.textContent = 'Email verified! Please sign in.';
+        return;
+      }
+      showLoggedIn(data);
+    } catch {
+      setAuthMode('login');
+      showLoggedOut();
+      authEmail.value = email;
+      authError.textContent = 'Email verified! Please sign in.';
+    }
   }
 
   function showForgotScreen() {
@@ -818,6 +891,7 @@
   }
 
   function showLoggedIn(user) {
+    stopVerifyPolling();
     accountEmail.textContent = user.email;
     accountBar.classList.add('visible');
     authPanel.classList.remove('visible');
@@ -834,6 +908,7 @@
 
     const endpoint = authMode === 'login' ? `${API_BASE}/api/login` : `${API_BASE}/api/signup`;
     const submittedEmail = authEmail.value;
+    const submittedPassword = authPassword.value;
 
     try {
       const res = await fetch(endpoint, {
@@ -848,7 +923,7 @@
         if (res.status === 403 && authMode === 'login') {
           // Account exists but email isn't verified yet.
           authPassword.value = '';
-          showVerifyScreen(submittedEmail);
+          showVerifyScreen(submittedEmail, undefined, submittedPassword);
           return;
         }
         authError.textContent = data.detail || 'Something went wrong.';
@@ -859,7 +934,7 @@
 
       if (authMode === 'signup') {
         // Signup only sends a verification email - don't treat as logged in yet.
-        showVerifyScreen(submittedEmail, 'Account created! Enter the 6-digit code we emailed you to finish signing up.');
+        showVerifyScreen(submittedEmail, 'Account created! Enter the 6-digit code we emailed you to finish signing up.', submittedPassword);
         return;
       }
 
@@ -892,6 +967,8 @@
       }
 
       pendingVerifyEmail = null;
+      pendingVerifyPassword = null;
+      stopVerifyPolling();
       showLoggedIn(data); // verify-email also sets the session cookie
     } catch {
       verifyError.textContent = 'Could not reach the server.';
@@ -922,6 +999,8 @@
 
   verifyBackBtn.addEventListener('click', () => {
     pendingVerifyEmail = null;
+    pendingVerifyPassword = null;
+    stopVerifyPolling();
     setAuthMode('login');
     showLoggedOut();
   });

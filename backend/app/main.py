@@ -117,6 +117,10 @@ class ResetPasswordRequest(BaseModel):
     password: str   
 
 
+class VerifyStatusResponse(BaseModel):
+    verified: bool
+
+
 @app.post("/api/signup")
 def signup(payload: SignupRequest):
 
@@ -239,6 +243,12 @@ def resend_verification(payload: ForgotPasswordRequest):
     return {
         "message": "If the account exists, a code was sent"
     }
+
+
+@app.get("/api/verify-status", response_model=VerifyStatusResponse)
+def verify_status(email: EmailStr):
+    user = auth.get_user_by_email(email)
+    return {"verified": bool(user and user.get("email_verified"))}
 
 
 @app.post("/api/forgot-password")
