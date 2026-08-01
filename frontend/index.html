@@ -922,7 +922,14 @@
   let queueSuspendedForEdit = false;
   let queueRequestToken = 0;
 
-  const PREFETCH_AHEAD = 2; // how many uploads to have in flight at once
+  // ---- upload concurrency pool ----
+  // Uploads are launched from a self-refilling pool, not tied to how fast
+  // the user reviews/saves/discards. The moment a request comes back
+  // (success or failure), the next unstarted file is launched immediately.
+  const MAX_CONCURRENT_UPLOADS = 1; // only one upload in flight at a time
+  let activeUploadCount = 0;
+  let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
+
   let pendingUpload = null;
   let pendingEdit = null; // { gameId }
 
@@ -993,6 +1000,8 @@
   }
 
   function kickOffUpload(entry) {
+    activeUploadCount++;
+
     const formData = new FormData();
     formData.append('file', entry.file);
     formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
@@ -1011,13 +1020,19 @@
       .catch((err) => {
         entry.error = err.message || 'Upload failed';
         throw err;
+      })
+      .finally(() => {
+        activeUploadCount--;
+        pumpUploadQueue(); // this slot is free — launch the next unstarted file
       });
   }
 
-  function ensurePrefetched(uptoIndex) {
-    const end = Math.min(uploadQueue.length, uptoIndex + PREFETCH_AHEAD);
-    for (let i = queueIndex; i < end; i++) {
-      if (!uploadQueue[i].promise) kickOffUpload(uploadQueue[i]);
+  // Keeps up to MAX_CONCURRENT_UPLOADS in flight at all times, launching a
+  // new file the moment a slot opens up — not tied to save/discard/review speed.
+  function pumpUploadQueue() {
+    while (activeUploadCount < MAX_CONCURRENT_UPLOADS && nextUploadToLaunch < uploadQueue.length) {
+      kickOffUpload(uploadQueue[nextUploadToLaunch]);
+      nextUploadToLaunch++;
     }
   }
 
@@ -1025,7 +1040,9 @@
     resetResultPanel();
     uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
     queueIndex = 0;
-    ensurePrefetched(0);
+    nextUploadToLaunch = 0;
+    activeUploadCount = 0;
+    pumpUploadQueue();
     showQueueItem(0);
   }
 
@@ -1046,8 +1063,6 @@
     document.getElementById('queue-progress').textContent =
       `Photo ${index + 1} of ${uploadQueue.length}`;
 
-    ensurePrefetched(index);
-
     // Clear stale state/UI right away so a click during the wait can't
     // act on the previous photo's data.
     pendingUpload = null;
@@ -1066,6 +1081,8 @@
     setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
 
     try {
+      // entry.promise should already be in flight (or settled) thanks to
+      // pumpUploadQueue; kick it off directly only as a defensive fallback.
       const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
       if (token !== queueRequestToken) return; // superseded by a newer call
 
