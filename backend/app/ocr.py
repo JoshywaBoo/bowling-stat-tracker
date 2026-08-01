@@ -32,7 +32,14 @@ import os
 import google.generativeai as genai
 
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-MODEL = "gemini-3.6-flash"
+
+
+'''
+Models:
+"gemini-3.6-flash"
+"gemini-3.5-flash-lite"
+'''
+MODEL = os.environ.get("MODEL", "gemini-3.5-flash-lite")
 
 PROMPT = """This is a photo of a bowling alley's LED scoreboard display.
 
