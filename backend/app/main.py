@@ -14,6 +14,7 @@ Run locally (from the backend/ directory):
 Then open http://127.0.0.1:8000
 (index.html is served from the sibling frontend/ folder - see FRONTEND_DIR below)
 """
+import traceback
 
 import sqlite3
 from datetime import datetime, timezone, timedelta
@@ -223,30 +224,20 @@ def resend_verification(payload: ForgotPasswordRequest):
 
 @app.post("/api/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest):
+    try:
+        user = auth.get_user_by_email(payload.email)
 
-    user = auth.get_user_by_email(payload.email)
+        if user:
+            code = str(secrets.randbelow(900000) + 100000)
+            expires = datetime.now(timezone.utc) + timedelta(minutes=10)
 
-    if user:
+            auth.save_reset_code(user["id"], code, expires)
+            send_email_code(payload.email, code, "reset")
 
-        code = str(secrets.randbelow(900000) + 100000)
-        expires = datetime.now(timezone.utc) + timedelta(minutes=10)
-
-        auth.save_reset_code(
-            user["id"],
-            code,
-            expires
-        )
-
-        send_email_code(
-            payload.email,
-            code,
-            "reset"
-        )
-
-    return {
-        "message":
-        "If the email exists, a code was sent"
-    }
+        return {"message": "If the email exists, a code was sent"}
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(500, f"DEBUG: {type(e).__name__}: {e}")
 
 
 @app.post("/api/reset-password")
