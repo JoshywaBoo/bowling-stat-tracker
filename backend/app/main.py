@@ -24,6 +24,7 @@ from app.email import send_email_code
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
 
 from app import auth
@@ -138,7 +139,7 @@ def signup(payload: SignupRequest):
     )
 
     send_email_code(
-        payload.email,
+        ADMIN_EMAIL,
         code,
         "verify",
         for_email=payload.email
@@ -198,6 +199,21 @@ def verify_email(
     return user
 
 
+@app.get("/api/verify-link")
+def verify_link(email: str, code: str):
+    user = auth.verify_code(email, code)
+
+    if not user:
+        return HTMLResponse(
+            "<h1>Invalid or expired code</h1><p>Ask for a new verification email.</p>",
+            status_code=400,
+        )
+
+    return HTMLResponse(
+        f"<h1>Verified {user['email']}!</h1><p>You can now log in.</p>"
+    )
+
+
 @app.post("/api/resend-verification")
 def resend_verification(payload: ForgotPasswordRequest):
 
@@ -214,7 +230,7 @@ def resend_verification(payload: ForgotPasswordRequest):
         )
 
         send_email_code(
-            payload.email,
+            ADMIN_EMAIL,
             code,
             "verify",
             for_email=payload.email
