@@ -2030,10 +2030,8 @@ fileInput.addEventListener('change', () => {
     if (editButton) {
       const gameId = Number(editButton.dataset.gameId);
       if (!gameId) return;
-      const game = (await fetch(`${API_BASE}/api/games`, { credentials: 'include' }).then(r => r.json())).find(item => item.id === gameId);
-      if (game) {
-        openGameForEditing(game);
-      }
+      const game = allGames.find(item => item.id === gameId);
+      if (game) openGameForEditing(game);
       return;
     }
 
@@ -2119,111 +2117,128 @@ fileInput.addEventListener('change', () => {
     return parseFrames(player.rollSymbols).join(' ');
   }
 
-  saveBtn.addEventListener('click', async () => {
-    if (!pendingUpload && !pendingEdit) return;
+  // ---------------------------------------------------------- background saves
+  // Saving/editing shouldn't block the UI. Once client-side validation
+  // passes, the request is handed to this queue and the UI moves on right
+  // away. Requests run one at a time, in order, so a save/edit can't race
+  // a later one against the same game.
+  let saveOpQueue = [];
+  let saveOpRunning = false;
 
+  function enqueueSaveOp(run) {
+    saveOpQueue.push(run);
+    pumpSaveOpQueue();
+  }
+
+  async function pumpSaveOpQueue() {
+    if (saveOpRunning) return;
+    saveOpRunning = true;
+    while (saveOpQueue.length) {
+      const run = saveOpQueue.shift();
+      try {
+        await run();
+      } catch (err) {
+        console.error('Background save failed:', err);
+        setStatus(err?.message || 'Could not save a game in the background.', true);
+      }
+    }
+    saveOpRunning = false;
+  }
+
+  saveBtn.addEventListener('click', () => {
+    if (!pendingUpload && !pendingEdit) return;
     saveError.textContent = '';
+
+    if (pendingEdit) {
+      const player = players[0];
+      const frameString = collectFrameStringFor(player);
+      if (frameString === null) {
+        saveError.textContent = 'Add at least one roll before saving.';
+        return;
+      }
+      const validationError = validateGame(player.rollSymbols);
+      if (validationError) {
+        saveError.textContent = validationError;
+        return;
+      }
+
+      const gameId = pendingEdit.gameId;
+      const playerName = player.name || null;
+      const createdAtValue = editedDateTimeInput.value
+        ? new Date(editedDateTimeInput.value).toISOString()
+        : null;
+      const wasQueueSuspended = queueSuspendedForEdit;
+
+      // Move on now - the PUT happens in the background.
+      if (wasQueueSuspended) {
+        queueSuspendedForEdit = false;
+        showQueueItem(queueIndex);
+      } else {
+        resetResultPanel();
+      }
+
+      enqueueSaveOp(async () => {
+        const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ frame_string: frameString, player_name: playerName, created_at: createdAtValue }),
+        });
+        if (res.status === 401) { showLoggedOut(); return; }
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Could not save this game.');
+        loadHistory();
+      });
+      return;
+    }
 
     const selectedPlayers = players.filter(p => p.selected);
 
-    if (pendingEdit) {
-          const player = players[0];
-          const frameString = collectFrameStringFor(player);
-          if (frameString === null) {
-            saveError.textContent = 'Add at least one roll before saving.';
-            return;
-          }
-          const validationError = validateGame(player.rollSymbols);
-          if (validationError) {
-            saveError.textContent = validationError;
-            return;
-          }
+    // Validate everything up front - once we move on, there's no player
+    // row left on screen to show a per-frame error against.
+    for (const player of selectedPlayers) {
+      const frameString = collectFrameStringFor(player);
+      if (frameString === null) {
+        saveError.textContent = `${player.name || 'A player'}: add at least one roll before saving.`;
+        return;
+      }
+      const validationError = validateGame(player.rollSymbols);
+      if (validationError) {
+        saveError.textContent = `${player.name || 'A player'}: ${validationError}`;
+        return;
+      }
+    }
 
-          saveBtn.disabled = true;
-          saveBtn.textContent = 'Saving…';
+    const imageKey = pendingUpload.imageKey;
+    const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
+    const payloads = selectedPlayers.map(player => ({
+      image_key: imageKey,
+      frame_string: collectFrameStringFor(player),
+      player_name: player.name || null,
+      created_at: createdAtValue,
+    }));
 
-          try {
-            const createdAtValue = editedDateTimeInput.value
-              ? new Date(editedDateTimeInput.value).toISOString()
-              : null;
+    // Move on now - the POSTs happen in the background.
+    if (uploadQueue.length) {
+      showQueueItem(queueIndex + 1);
+    } else {
+      resetResultPanel();
+    }
 
-            const res = await fetch(`${API_BASE}/api/games/${pendingEdit.gameId}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                frame_string: frameString,
-                player_name: player.name || null,
-                created_at: createdAtValue,
-              }),
-            });
-
-            if (res.status === 401) {
-              showLoggedOut();
-              return;
-            }
-
-            const data = await res.json();
-
-            if (!res.ok) {
-              saveError.textContent = data.detail || 'Could not save this game.';
-              return;
-            }
-
-            if (queueSuspendedForEdit) {
-              queueSuspendedForEdit = false;
-              showQueueItem(queueIndex); // back to the queue photo we paused on
-            } else {
-              resetResultPanel();
-            }
-            loadHistory();
-          } catch {
-            saveError.textContent = 'Could not reach the server.';
-          } finally {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save changes';
-          }
-          return;
-        }
-
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving…';
-
-    try {
-      const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
-
-      for (const player of selectedPlayers) {
+    enqueueSaveOp(async () => {
+      for (const payload of payloads) {
         const res = await fetch(`${API_BASE}/api/games`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            image_key: pendingUpload.imageKey,
-            frame_string: collectFrameStringFor(player),
-            player_name: player.name || null,
-            created_at: createdAtValue,
-          }),
+          body: JSON.stringify(payload),
         });
         if (res.status === 401) { showLoggedOut(); return; }
         const data = await res.json();
-        if (!res.ok) {
-          saveError.textContent = `${player.name || 'A player'}: ${data.detail || 'Could not save.'}`;
-          return;
-        }
-      }
-
-      if (uploadQueue.length) {
-        showQueueItem(queueIndex + 1);
-      } else {
-        resetResultPanel();
+        if (!res.ok) throw new Error(`${payload.player_name || 'A player'}: ${data.detail || 'Could not save.'}`);
       }
       loadHistory();
-    } catch {
-      saveError.textContent = 'Could not reach the server.';
-    } finally {
-      saveBtn.disabled = false;
-      saveBtn.textContent = pendingEdit ? 'Save changes' : 'Save game';
-    }
+    });
   });
 
   discardBtn.addEventListener('click', () => {
