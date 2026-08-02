@@ -489,15 +489,12 @@
   }
   .frame-cell .frame-n.split-marked:hover { color: var(--danger); background: rgba(255, 93, 93, 0.14); }
 
-  .frame-box.strike,
-  .frame-input.strike { color: var(--cyan); text-shadow: 0 0 10px rgba(41, 230, 200, 0.4); }
-
   .frame-input-wrap {
     position: relative;
     width: 44px;
     height: 44px;
   }
-  .frame-input.split-active {
+  .frame-input.has-overlay {
     color: transparent;
     caret-color: var(--cyan);
   }
@@ -1119,16 +1116,33 @@
     return (str || '').replace(/\*/g, '');
   }
 
+  // Shared per-character color rules for a roll symbol: split marks win
+  // (red), then strikes (cyan), then everything else (amber). Used by
+  // both the editable frame overlay and the read-only history list so
+  // the two stay in sync.
+  function rollCharStyle(ch, marked) {
+    if (marked) {
+      return { color: 'var(--danger)', shadow: '0 0 8px rgba(255, 93, 93, 0.4)' };
+    }
+    const isX = ch.toUpperCase() === 'X';
+    return isX
+      ? { color: 'var(--cyan)', shadow: '0 0 8px rgba(41, 230, 200, 0.4)' }
+      : { color: 'var(--amber)', shadow: '0 0 8px var(--amber-glow)' };
+  }
+
   function frameStringToHtml(frameString) {
     return (frameString || '').split(' ').map(frame => {
       let out = '';
       for (let i = 0; i < frame.length; i++) {
         if (frame[i] === '*') {
           const ch = frame[i + 1] || '';
-          out += `<span style="color:var(--danger)">${ch}</span>`;
+          const style = rollCharStyle(ch, true);
+          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
           i += 1;
         } else {
-          out += frame[i];
+          const ch = frame[i];
+          const style = rollCharStyle(ch, false);
+          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
         }
       }
       return out;
@@ -1138,13 +1152,14 @@
   // Builds the colored-overlay markup shown over a frame-input whenever
   // that frame has a split marked (the input's own text is made
   // transparent so only this overlay is visible, while the input keeps
-  // handling actual typing/caret/selection).
+  // handling actual typing/caret/selection). Each character is colored
+  // independently, so e.g. a 10th-frame box like "X72" only turns the
+  // literal "X" cyan — the "7" and "2" stay amber.
   function buildFrameOverlayHtml(frame, state) {
     return frame.split('').map((ch, i) => {
       const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-      const isX = ch.toUpperCase() === 'X';
-      const color = marked ? 'var(--danger)' : (isX ? 'var(--cyan)' : 'var(--amber)');
-      return `<span style="color:${color};">${ch}</span>`;
+      const style = rollCharStyle(ch, marked);
+      return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
     }).join('');
   }
 
@@ -1802,7 +1817,7 @@ fileInput.addEventListener('change', () => {
 
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'frame-input' + (f.includes('X') ? ' strike' : '') + (state ? ' split-active' : '');
+        input.className = 'frame-input has-overlay';
         input.value = f;
         input.autocomplete = 'off';
         input.spellcheck = false;
@@ -1821,12 +1836,10 @@ fileInput.addEventListener('change', () => {
 
         inputWrap.appendChild(input);
 
-        if (state) {
-          const overlay = document.createElement('div');
-          overlay.className = 'frame-overlay';
-          overlay.innerHTML = buildFrameOverlayHtml(f, state);
-          inputWrap.appendChild(overlay);
-        }
+        const overlay = document.createElement('div');
+        overlay.className = 'frame-overlay';
+        overlay.innerHTML = buildFrameOverlayHtml(f, state);
+        inputWrap.appendChild(overlay);
 
         offset += f.length;
         cell.appendChild(n);
