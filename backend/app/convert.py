@@ -56,6 +56,10 @@ def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((35, 35), np.uint8))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))
 
+    # debug mask output for testing
+    if os.environ.get("DEBUG_MASK"):
+        Image.fromarray(mask).save("debug_mask.png")
+
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return None
@@ -96,9 +100,6 @@ def to_png_bytes(
     # Respect camera orientation (EXIF) before doing anything else, otherwise
     # a resize can lock in a sideways/upside-down image.
     img = ImageOps.exif_transpose(img)
-
-    if img.mode != "RGB":
-        img = img.convert("RGB")
 
     if img.mode != "RGB":
         img = img.convert("RGB")
