@@ -357,14 +357,6 @@
   }
   .result-header time { font-size: 12px; color: var(--text-muted); }
 
-  .result-score {
-    font-family: 'VT323', monospace;
-    font-size: 26px;
-    color: var(--cyan);
-    text-shadow: 0 0 10px rgba(41, 230, 200, 0.4);
-    letter-spacing: 1px;
-  }
-
   .result-hint {
     font-size: 12px;
     color: var(--text-muted);
@@ -813,7 +805,6 @@
     <div class="result" id="result">
       <div class="result-header">
         <span class="label">Review &amp; edit before saving</span>
-        <span class="result-score" id="result-score">0</span>
       </div>
       <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
       <div class="result-meta">
@@ -969,7 +960,6 @@
   const discardBtn = document.getElementById('discard-btn');
   const saveError = document.getElementById('save-error');
   const editedDateTimeInput = document.getElementById('edited-datetime');
-  const resultScoreEl = document.getElementById('result-score');
 
   let authMode = 'login';
 
@@ -992,6 +982,7 @@
 
   let pendingUpload = null;
   let pendingEdit = null; // { gameId }
+  let pendingRetry = null; // { index } - set when the currently-shown queue item failed
 
   // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
   // Single-player flows (editing a saved game) just use a 1-item array.
@@ -1133,10 +1124,10 @@
 
     pendingUpload = null;
     pendingEdit = null;              // <-- add this: resuming the queue always ends any pending edit
+    pendingRetry = null;             // <-- clear any stale retry state from a previous failed item
     players = [];
     playerRowsEl.innerHTML = '';
     playerRowsEl.classList.remove('hide-checkboxes'); // also make sure checkboxes come back for multi-player queue items
-    resultScoreEl.textContent = '0';
     saveBtn.textContent = 'Save game';   // <-- add this: undo "Save changes" label left over from editing
     if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
       URL.revokeObjectURL(resultThumb.src);
@@ -1178,8 +1169,10 @@
       setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
       playerRowsEl.innerHTML = '';
       resultThumb.removeAttribute('src');
-      resultScoreEl.textContent = '0';
       players = [];
+      pendingUpload = null;
+      pendingRetry = { index };      // let the user retry this specific queue slot
+      saveBtn.textContent = 'Retry';
       resultEl.classList.add('visible');
     } finally {
       if (token === queueRequestToken) {
@@ -1187,6 +1180,25 @@
         discardBtn.disabled = false;
       }
     }
+  }
+
+  // Re-sends the failed file to the OCR endpoint by re-queuing it as a
+  // fresh entry (so it goes through the normal concurrency pool), then
+  // moves the UI forward to whatever's next, same as Discard would.
+  // The retried entry will get its own turn in showQueueItem() once the
+  // queue reaches it.
+  function retryCurrentUpload() {
+    if (!pendingRetry) return;
+    const { index } = pendingRetry;
+    const failedEntry = uploadQueue[index];
+    pendingRetry = null;
+    if (!failedEntry) return;
+
+    const retryEntry = { file: failedEntry.file, promise: null, result: null, error: null };
+    uploadQueue.push(retryEntry);
+    pumpUploadQueue(); // launches it once a slot is free, just like any queued upload
+
+    showQueueItem(queueIndex + 1);
   }
 
   function dataUrlToBlobUrl(dataUrl) {
@@ -1687,9 +1699,6 @@ fileInput.addEventListener('change', () => {
       checkbox.title = 'Include this player when saving';
       checkbox.addEventListener('change', () => {
         player.selected = checkbox.checked;
-        if (players.length > 1) {
-          resultScoreEl.textContent = `${players.filter(p => p.selected).length}/${players.length} selected`;
-        }
       });
       selectWrap.appendChild(checkbox);
       row.appendChild(selectWrap);
@@ -1697,12 +1706,6 @@ fileInput.addEventListener('change', () => {
       playerRowsEl.appendChild(row);
       restoreCursor(inputs, player);
     });
-
-    if (players.length === 1) {
-      resultScoreEl.textContent = '';
-    } else {
-      resultScoreEl.textContent = `${players.filter(p => p.selected).length}/${players.length} selected`;
-    }
   }
 
   function restoreCursor(inputs, player) {
@@ -2114,11 +2117,11 @@ fileInput.addEventListener('change', () => {
     discardBtn.disabled = false;
     pendingUpload = null;
     pendingEdit = null;
+    pendingRetry = null;
     players = [];
     playerRowsEl.innerHTML = '';
     playerRowsEl.classList.remove('hide-checkboxes');
     resultEl.classList.remove('visible');
-    resultScoreEl.textContent = '0';
     saveError.textContent = '';
     fileInput.value = '';
     editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
@@ -2164,6 +2167,12 @@ fileInput.addEventListener('change', () => {
 
   saveBtn.addEventListener('click', () => {
     if (saveBtn.disabled) return; // ignore rapid double-clicks/taps
+
+    if (pendingRetry) {
+      retryCurrentUpload();
+      return;
+    }
+
     if (!pendingUpload && !pendingEdit) return;
     saveError.textContent = '';
 
