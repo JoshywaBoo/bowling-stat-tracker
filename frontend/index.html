@@ -1147,7 +1147,7 @@
         selected: true,
       }));
       playerRowsEl.classList.remove('hide-checkboxes');
-      editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
+      editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
       renderEditableFrames();
 
       if (resultThumb.src && resultThumb.src.startsWith('blob:')) {

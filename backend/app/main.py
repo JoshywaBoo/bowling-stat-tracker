@@ -317,7 +317,7 @@ async def upload_scoreboard(
         raise HTTPException(400, "File too large (max 15 MB)")
 
     try:
-        png_bytes = to_png_bytes(raw_bytes)
+        png_bytes, capture_date = to_png_bytes(raw_bytes)
     except Exception:
         raise HTTPException(400, "Could not read that file as an image")
 
@@ -329,6 +329,7 @@ async def upload_scoreboard(
     return {
         "players": players,
         "preview_image": "data:image/png;base64," + base64.b64encode(png_bytes).decode("ascii"),
+        "capture_date": capture_date,
     }
 
 

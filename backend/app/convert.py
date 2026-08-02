@@ -20,6 +20,7 @@ import numpy as np
 import math
 import pillow_heif
 from PIL import Image, ImageOps
+from datetime import datetime
 
 pillow_heif.register_heif_opener()
 
@@ -39,6 +40,31 @@ MIN_CROP_AREA_FRACTION = 0.03
 # Extra margin added around the detected screen so we don't clip the bezel
 # or the very edge of the scoreboard's outermost column.
 CROP_PADDING_FRACTION = 0.04
+
+
+def extract_capture_date(img: Image.Image) -> str | None:
+    """Read EXIF DateTimeOriginal (falls back to DateTime) and return an
+    ISO 8601 string, or None if the image has no usable EXIF timestamp
+    (common for screenshots, edited photos, or images that stripped EXIF)."""
+    try:
+        exif = img.getexif()
+        if not exif:
+            return None
+
+        # DateTimeOriginal (36867) is when the shutter fired - what we want.
+        # DateTime (306) is "file modified" and can reflect an edit, not
+        # the capture - only used as a fallback if the original is missing.
+        raw = exif.get(36867) or exif.get(306)
+        if not raw:
+            return None
+
+        # EXIF datetimes look like "2024:08:01 14:32:07"
+        dt = datetime.strptime(raw, "%Y:%m:%d %H:%M:%S")
+        return dt.isoformat()
+    except Exception:
+        # Malformed EXIF shouldn't break the upload - just skip the date.
+        return None
+
 
 def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     arr = np.array(img)
@@ -93,9 +119,16 @@ def to_png_bytes(
     raw_bytes: bytes,
     max_dimension: int = MAX_IMAGE_DIMENSION,
     auto_crop: bool = True,
-) -> bytes:
-    """Decode arbitrary image bytes, downscale if needed, and re-encode as PNG bytes."""
+) -> tuple[bytes, str | None]:
+    """Decode arbitrary image bytes, downscale if needed, and re-encode as
+    PNG bytes. Returns (png_bytes, capture_date) where capture_date is an
+    ISO 8601 string read from EXIF, or None if unavailable."""
     img = Image.open(BytesIO(raw_bytes))
+
+    # Read capture date before any transform touches the image. Orientation
+    # transposes don't strip EXIF, but this keeps the read as close to the
+    # original file as possible so nothing downstream can affect it.
+    capture_date = extract_capture_date(img)
 
     # Respect camera orientation (EXIF) before doing anything else, otherwise
     # a resize can lock in a sideways/upside-down image.
@@ -136,4 +169,4 @@ def to_png_bytes(
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)
-    return buf.getvalue()
+    return buf.getvalue(), capture_date
