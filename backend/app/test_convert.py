@@ -54,8 +54,9 @@ def main():
         kwargs["max_dimension"] = args.max_dimension
 
     print("Calling to_png_bytes...", flush=True)
-    png_bytes = to_png_bytes(raw, **kwargs)
+    png_bytes, capture_date = to_png_bytes(raw, **kwargs)
     print("to_png_bytes returned", flush=True)
+    print(f"Capture date: {capture_date}", flush=True)
 
     out_path = Path(args.out)
     out_path.write_bytes(png_bytes)
