@@ -1449,28 +1449,6 @@
     resetNewPassword.value = '';
   }
 
-  /*
-  function showLoggedIn(user) {
-    stopVerifyPolling();
-    accountEmail.textContent = user.email;
-    accountBar.classList.add('visible');
-    authPanel.classList.remove('visible');
-    verifyPanel.classList.remove('visible');
-    forgotPanel.classList.remove('visible');
-    appContent.classList.add('visible');
-    loadHistory();
-  }
-
-  function showLoggedOut() {
-    stopVerifyPolling();
-    accountBar.classList.remove('visible');
-    verifyPanel.classList.remove('visible');
-    forgotPanel.classList.remove('visible');
-    authPanel.classList.add('visible');
-    appContent.classList.remove('visible');
-  }
-  */
-
   function showLoggedIn(user) {
     stopVerifyPolling();
     isLoggedIn = true;   // ← add this
@@ -1671,13 +1649,6 @@
     setAuthMode('login');
     showLoggedOut();
   });
-
-  /*
-  logoutBtn.addEventListener('click', async () => {
-    await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
-    showLoggedOut();
-  });
-  */
 
   async function checkSession() {
     try {
@@ -2240,19 +2211,6 @@ fileInput.addEventListener('change', () => {
       setStatus('Could not delete that game.', true);
     }
   });
-
-  /*
-  async function loadHistory() {
-    try {
-      const res = await fetch(`${API_BASE}/api/games`, { credentials: 'include' });
-      if (res.status === 401) { showLoggedOut(); return; }
-      const games = await res.json();
-      renderHistory(games);
-    } catch {
-      historyList.innerHTML = '<p class="empty-history">Could not load history.</p>';
-    }
-  }
-  */
 
   async function loadHistory() {
     try {
