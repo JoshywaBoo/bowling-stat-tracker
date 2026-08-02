@@ -329,17 +329,18 @@ async def upload_scoreboard(
 
     async with upload_semaphore:
         try:
-            png_bytes, capture_date = await asyncio.to_thread(to_png_bytes, raw_bytes)
-        except Exception:
-            raise HTTPException(400, "Could not read that file as an image")
+            try:
+                png_bytes, capture_date = await asyncio.to_thread(to_png_bytes, raw_bytes)
+            except Exception:
+                raise HTTPException(400, "Could not read that file as an image")
 
-        try:
-            players = await asyncio.to_thread(read_scoreboard_multiplayer, png_bytes)
-        except Exception as exc:
-            raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
-
-        if libc is not None:
-            libc.malloc_trim(0)
+            try:
+                players = await asyncio.to_thread(read_scoreboard_multiplayer, png_bytes)
+            except Exception as exc:
+                raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
+        finally:
+            if libc is not None:
+                libc.malloc_trim(0)
 
     return {
         "players": players,
