@@ -98,14 +98,34 @@ def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     if not candidates:
         return None
 
-    # Among large bright/saturated regions, the scoreboard is the one the
-    # photographer centered in frame - other bright objects (lit trusses,
-    # neighboring lane monitors) tend to sit off to the side or along an edge.
-    def dist_to_center(box):
-        x, y, w, h = box
-        return math.hypot((x + w / 2) - img_cx, (y + h / 2) - img_cy)
+    # A bowling scoreboard's roll grid and its info panel (name, speed,
+    # team, lane graphic) are often two separate bright/saturated blobs
+    # even after closing - e.g. if a divider line is thin or the panels
+    # differ slightly in brightness. Picking only the single blob nearest
+    # the image center can grab just the info panel and crop out the
+    # actual roll grid entirely.
+    #
+    # Instead, keep every sufficiently large candidate that's reasonably
+    # close to the frame center (so we don't pull in something unrelated,
+    # like a lit sign off to the side), and take the union of their
+    # bounding boxes. This tends to capture the whole lit display - all
+    # of its panels - rather than just one piece of it.
+    max_dist = math.hypot(w_img, h_img) / 2
+    center_candidates = [
+        box for box in candidates
+        if dist_to_center(box, img_cx, img_cy) <= max_dist * 0.6
+    ]
+    if not center_candidates:
+        # Nothing was close enough to center - fall back to the single
+        # nearest candidate rather than refusing to crop at all.
+        center_candidates = [min(candidates, key=lambda b: dist_to_center(b, img_cx, img_cy))]
 
-    x, y, w, h = min(candidates, key=dist_to_center)
+    x0 = min(bx for bx, by, bw, bh in center_candidates)
+    y0 = min(by for bx, by, bw, bh in center_candidates)
+    x1 = max(bx + bw for bx, by, bw, bh in center_candidates)
+    y1 = max(by + bh for bx, by, bw, bh in center_candidates)
+    w, h = x1 - x0, y1 - y0
+    x, y = x0, y0
 
     pad_x, pad_y = int(w * CROP_PADDING_FRACTION), int(h * CROP_PADDING_FRACTION)
     x0 = max(0, x - pad_x)
@@ -113,6 +133,11 @@ def detect_scoreboard_box(img: Image.Image) -> tuple[int, int, int, int] | None:
     x1 = min(w_img, x + w + pad_x)
     y1 = min(h_img, y + h + pad_y)
     return (x0, y0, x1, y1)
+
+
+def dist_to_center(box: tuple[int, int, int, int], cx: float, cy: float) -> float:
+    x, y, w, h = box
+    return math.hypot((x + w / 2) - cx, (y + h / 2) - cy)
 
 
 def to_png_bytes(
