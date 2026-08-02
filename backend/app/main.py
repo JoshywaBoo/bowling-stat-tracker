@@ -17,6 +17,7 @@ import secrets
 from app.email import send_email_code
 import base64
 
+
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.responses import HTMLResponse
@@ -29,6 +30,13 @@ from app.db import execute, get_db, insert_and_get_id
 from app.ocr import read_scoreboard_multiplayer
 
 from fastapi.middleware.cors import CORSMiddleware
+
+import ctypes
+
+try:
+    libc = ctypes.CDLL("libc.so.6")
+except OSError:
+    libc = None  # not on a glibc-based system (e.g. local dev on Mac) - just skip trimming
 
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
@@ -55,6 +63,8 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024  # 15 MB
 
 ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "youremail@example.com")
+
+upload_semaphore = asyncio.Semaphore(1)
 
 
 def init_db() -> None:
@@ -302,6 +312,13 @@ class UpdateGameRequest(BaseModel):
 async def upload_scoreboard(
     file: UploadFile = File(...), user: dict = Depends(auth.get_current_user)
 ):
+    """Parse an uploaded scoreboard image but DO NOT save it yet.
+
+    Returns the image_key and a list of {name, frame_string} - one per
+    bowler detected - so the frontend can show an editable preview for
+    each player. Nothing is written to the `games` table until the user
+    confirms via POST /api/games.
+    """
     ext = Path(file.filename or "").suffix.lower()
     if file.content_type not in ALLOWED_TYPES and ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, f"Unsupported file type: {file.content_type}")
@@ -310,15 +327,19 @@ async def upload_scoreboard(
     if len(raw_bytes) > MAX_UPLOAD_BYTES:
         raise HTTPException(400, "File too large (max 15 MB)")
 
-    try:
-        png_bytes, capture_date = await asyncio.to_thread(to_png_bytes, raw_bytes)
-    except Exception:
-        raise HTTPException(400, "Could not read that file as an image")
+    async with upload_semaphore:
+        try:
+            png_bytes, capture_date = await asyncio.to_thread(to_png_bytes, raw_bytes)
+        except Exception:
+            raise HTTPException(400, "Could not read that file as an image")
 
-    try:
-        players = await asyncio.to_thread(read_scoreboard_multiplayer, png_bytes)
-    except Exception as exc:
-        raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
+        try:
+            players = await asyncio.to_thread(read_scoreboard_multiplayer, png_bytes)
+        except Exception as exc:
+            raise HTTPException(502, f"Could not read the scoreboard image: {exc}")
+
+        if libc is not None:
+            libc.malloc_trim(0)
 
     return {
         "players": players,
