@@ -1090,13 +1090,28 @@
   }
 
   function startUploadQueue(files) {
-    resetResultPanel();
-    uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
-    queueIndex = 0;
-    nextUploadToLaunch = 0;
-    activeUploadCount = 0;
-    pumpUploadQueue();
-    showQueueItem(0);
+    const queueActive = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
+
+    if (!queueActive) {
+      // No queue running — start fresh, same as before.
+      resetResultPanel();
+      uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
+      queueIndex = 0;
+      nextUploadToLaunch = 0;
+      activeUploadCount = 0;
+      pumpUploadQueue();
+      showQueueItem(0);
+      return;
+    }
+
+    // A queue is already processing — append instead of clobbering it.
+    const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
+    uploadQueue.push(...newEntries);
+    pumpUploadQueue(); // picks up the new entries once a slot frees up
+    if (!queueSuspendedForEdit) {                       // ADD THIS GUARD
+      document.getElementById('queue-progress').textContent =
+        `Photo ${queueIndex + 1}/${uploadQueue.length}`;
+    }
   }
 
   async function showQueueItem(index) {
@@ -2024,6 +2039,7 @@ fileInput.addEventListener('change', () => {
     resultEl.classList.add('visible');
     saveBtn.textContent = 'Save changes';
     setStatus('Editing previous game');
+    document.getElementById('queue-progress').textContent = 'Editing a past game'; // ADD THIS
   }
 
   historyList.addEventListener('click', async (e) => {
