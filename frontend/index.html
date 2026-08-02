@@ -475,12 +475,43 @@
     font-size: 8px;
     color: var(--text-muted);
     letter-spacing: 0;
-    pointer-events: none;
     line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 3px;
+    margin-left: 0;
+    border-radius: 3px;
   }
+  .frame-cell .frame-n:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+  .frame-cell .frame-n.split-marked {
+    color: var(--danger);
+    font-weight: 700;
+  }
+  .frame-cell .frame-n.split-marked:hover { color: var(--danger); background: rgba(255, 93, 93, 0.14); }
 
   .frame-box.strike,
   .frame-input.strike { color: var(--cyan); text-shadow: 0 0 10px rgba(41, 230, 200, 0.4); }
+
+  .frame-input-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+  }
+  .frame-input.split-active {
+    color: transparent;
+    caret-color: var(--cyan);
+  }
+  .frame-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'VT323', monospace;
+    font-size: 22px;
+    letter-spacing: 1px;
+    pointer-events: none;
+  }
 
   .result-actions {
     display: flex;
@@ -1034,6 +1065,89 @@
     return frameString.replace(/\s+/g, '').split('');
   }
 
+  // ------------------------------------------------- split-marker encoding
+  // Splits are a cosmetic annotation (first roll of a frame left a split,
+  // or for frame 10 specifically, first AND third roll each left one).
+  // They're encoded directly into the saved frame_string using a leading
+  // '*' immediately before the marked character, e.g. "*7/" or, for a
+  // frame 10 with two splits, "*X5*/". This keeps everything in the one
+  // string field the backend already stores, so it round-trips through
+  // save/edit/history without needing a schema change.
+  function annotateFrameWithSplits(frame, state) {
+    if (!state) return frame;
+    return frame
+      .split('')
+      .map((ch, i) => {
+        const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+        return marked ? '*' + ch : ch;
+      })
+      .join('');
+  }
+
+  // Inverse of the above: strips '*' markers out of a saved frame_string,
+  // returning both the clean roll symbols (for scoring/editing) and a
+  // { frameIndex: state } map describing which frames were marked.
+  function parseAnnotatedFrameString(frameString) {
+    const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
+    const rollSymbols = [];
+    const splitFrames = {};
+
+    frames.forEach((frame, idx) => {
+      const marks = [];
+      const chars = [];
+      for (let i = 0; i < frame.length; i++) {
+        if (frame[i] === '*') {
+          marks.push(chars.length);
+        } else {
+          chars.push(frame[i]);
+        }
+      }
+      if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
+        splitFrames[idx] = 2;
+      } else if (marks.length >= 1) {
+        splitFrames[idx] = 1;
+      }
+      rollSymbols.push(...chars);
+    });
+
+    return { rollSymbols, splitFrames };
+  }
+
+  // For display-only contexts (history list) where we just want to render
+  // marked characters in red without needing the parsed symbol array.
+  function stripSplitMarkers(str) {
+    return (str || '').replace(/\*/g, '');
+  }
+
+  function frameStringToHtml(frameString) {
+    return (frameString || '').split(' ').map(frame => {
+      let out = '';
+      for (let i = 0; i < frame.length; i++) {
+        if (frame[i] === '*') {
+          const ch = frame[i + 1] || '';
+          out += `<span style="color:var(--danger)">${ch}</span>`;
+          i += 1;
+        } else {
+          out += frame[i];
+        }
+      }
+      return out;
+    }).join(' ');
+  }
+
+  // Builds the colored-overlay markup shown over a frame-input whenever
+  // that frame has a split marked (the input's own text is made
+  // transparent so only this overlay is visible, while the input keeps
+  // handling actual typing/caret/selection).
+  function buildFrameOverlayHtml(frame, state) {
+    return frame.split('').map((ch, i) => {
+      const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+      const isX = ch.toUpperCase() === 'X';
+      const color = marked ? 'var(--danger)' : (isX ? 'var(--cyan)' : 'var(--amber)');
+      return `<span style="color:${color};">${ch}</span>`;
+    }).join('');
+  }
+
   function parseRollValue(char) {
     if (!char) return 0;
     const normalized = char.toUpperCase();
@@ -1147,12 +1261,16 @@
 
       setStatus('');
       pendingUpload = { imageKey: '' };
-      players = data.players.map(p => ({
-        name: p.name || '',
-        rollSymbols: flattenFrameString(p.frame_string),
-        pendingCursor: null,
-        selected: true,
-      }));
+      players = data.players.map(p => {
+        const parsed = parseAnnotatedFrameString(p.frame_string);
+        return {
+          name: p.name || '',
+          rollSymbols: parsed.rollSymbols,
+          pendingCursor: null,
+          selected: true,
+          splitFrames: parsed.splitFrames,
+        };
+      });
       playerRowsEl.classList.remove('hide-checkboxes');
       editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
       renderEditableFrames();
@@ -1609,6 +1727,7 @@ fileInput.addEventListener('change', () => {
     let totalScore = 0;
 
     players.forEach((player, playerIdx) => {
+      if (!player.splitFrames) player.splitFrames = {};
       enforceCapacity(player);
       const frames = parseFrames(player.rollSymbols);
       const displayFrames = frames.length ? frames : [''];
@@ -1657,13 +1776,33 @@ fileInput.addEventListener('change', () => {
         const cell = document.createElement('div');
         cell.className = 'frame-cell';
 
+        const isFrame10 = idx === 9;
+        const state = player.splitFrames[idx] || 0;
+
         const n = document.createElement('span');
-        n.className = 'frame-n';
+        n.className = 'frame-n' + (state ? ' split-marked' : '');
         n.textContent = idx + 1;
+        n.title = isFrame10
+          ? 'Click to toggle split (1st roll, then 1st + 3rd roll)'
+          : 'Click to toggle split';
+        n.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const cur = player.splitFrames[idx] || 0;
+          const next = isFrame10 ? (cur + 1) % 3 : (cur ? 0 : 1);
+          if (next) {
+            player.splitFrames[idx] = next;
+          } else {
+            delete player.splitFrames[idx];
+          }
+          renderEditableFrames();
+        });
+
+        const inputWrap = document.createElement('div');
+        inputWrap.className = 'frame-input-wrap';
 
         const input = document.createElement('input');
         input.type = 'text';
-        input.className = 'frame-input' + (f.includes('X') ? ' strike' : '');
+        input.className = 'frame-input' + (f.includes('X') ? ' strike' : '') + (state ? ' split-active' : '');
         input.value = f;
         input.autocomplete = 'off';
         input.spellcheck = false;
@@ -1680,9 +1819,18 @@ fileInput.addEventListener('change', () => {
           renderEditableFrames();
         });
 
+        inputWrap.appendChild(input);
+
+        if (state) {
+          const overlay = document.createElement('div');
+          overlay.className = 'frame-overlay';
+          overlay.innerHTML = buildFrameOverlayHtml(f, state);
+          inputWrap.appendChild(overlay);
+        }
+
         offset += f.length;
         cell.appendChild(n);
-        cell.appendChild(input);
+        cell.appendChild(inputWrap);
         framesRow.appendChild(cell);
         inputs.push(input);
       });
@@ -2009,10 +2157,11 @@ fileInput.addEventListener('change', () => {
     games.forEach(g => {
       const item = document.createElement('div');
       item.className = 'history-item';
+      const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
       item.innerHTML = `
         <div class="history-main">
-          <span class="frame-string">${g.frame_string}</span>
-          <span class="history-score">${calculateBowlingScore(g.frame_string)}</span>
+          <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+          <span class="history-score">${cleanScore}</span>
         </div>
         <div class="history-item-actions">
           <time>${formatTime(g.created_at)}</time>
@@ -2029,11 +2178,13 @@ fileInput.addEventListener('change', () => {
     resetResultPanel();
     queueSuspendedForEdit = suspendQueue;
     pendingEdit = { gameId: game.id };
+    const parsed = parseAnnotatedFrameString(game.frame_string);
     players = [{
       name: game.player_name || '',
-      rollSymbols: flattenFrameString(game.frame_string),
+      rollSymbols: parsed.rollSymbols,
       pendingCursor: null,
       selected: true,
+      splitFrames: parsed.splitFrames,
     }];
     playerRowsEl.classList.add('hide-checkboxes');
     editedDateTimeInput.value = formatDateTimeInput(game.created_at);
@@ -2134,7 +2285,9 @@ fileInput.addEventListener('change', () => {
 
   function collectFrameStringFor(player) {
     if (!player.rollSymbols.length) return null;
-    return parseFrames(player.rollSymbols).join(' ');
+    const frames = parseFrames(player.rollSymbols);
+    const splitFrames = player.splitFrames || {};
+    return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || 0)).join(' ');
   }
 
   // ---------------------------------------------------------- background saves

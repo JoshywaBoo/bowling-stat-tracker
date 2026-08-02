@@ -52,7 +52,7 @@ For EACH bowler shown, read:
 - the row of roll symbols (top row of their two rows - NOT the running
   point totals row)
 
-Symbols: X = strike, 0-9 = pins knocked down, / = spare, - = miss, F = foul.
+Symbols: X = strike, 1-9 = pins knocked down, / = spare, - = miss, F = foul.
 
 Return a JSON array, one object per bowler, in left-to-right/top-to-bottom
 display order:
