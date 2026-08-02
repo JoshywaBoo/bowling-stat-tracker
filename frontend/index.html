@@ -1111,17 +1111,18 @@
     }
 
     queueIndex = index;
-    const token = ++queueRequestToken; // invalidates any older in-flight call
+    const token = ++queueRequestToken;
     const entry = uploadQueue[index];
     document.getElementById('queue-progress').textContent =
       `Photo ${index + 1}/${uploadQueue.length}`;
 
-    // Clear stale state/UI right away so a click during the wait can't
-    // act on the previous photo's data.
     pendingUpload = null;
+    pendingEdit = null;              // <-- add this: resuming the queue always ends any pending edit
     players = [];
     playerRowsEl.innerHTML = '';
+    playerRowsEl.classList.remove('hide-checkboxes'); // also make sure checkboxes come back for multi-player queue items
     resultScoreEl.textContent = '0';
+    saveBtn.textContent = 'Save game';   // <-- add this: undo "Save changes" label left over from editing
     if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
       URL.revokeObjectURL(resultThumb.src);
     }
@@ -2146,6 +2147,7 @@ fileInput.addEventListener('change', () => {
   }
 
   saveBtn.addEventListener('click', () => {
+    if (saveBtn.disabled) return; // ignore rapid double-clicks/taps
     if (!pendingUpload && !pendingEdit) return;
     saveError.textContent = '';
 
@@ -2162,6 +2164,9 @@ fileInput.addEventListener('change', () => {
         return;
       }
 
+      saveBtn.disabled = true;
+      discardBtn.disabled = true;
+
       const gameId = pendingEdit.gameId;
       const playerName = player.name || null;
       const createdAtValue = editedDateTimeInput.value
@@ -2169,12 +2174,11 @@ fileInput.addEventListener('change', () => {
         : null;
       const wasQueueSuspended = queueSuspendedForEdit;
 
-      // Move on now - the PUT happens in the background.
       if (wasQueueSuspended) {
         queueSuspendedForEdit = false;
-        showQueueItem(queueIndex);
+        showQueueItem(queueIndex); // re-enables the buttons once it renders
       } else {
-        resetResultPanel();
+        resetResultPanel(); // also re-enables the buttons
       }
 
       enqueueSaveOp(async () => {
@@ -2194,8 +2198,6 @@ fileInput.addEventListener('change', () => {
 
     const selectedPlayers = players.filter(p => p.selected);
 
-    // Validate everything up front - once we move on, there's no player
-    // row left on screen to show a per-frame error against.
     for (const player of selectedPlayers) {
       const frameString = collectFrameStringFor(player);
       if (frameString === null) {
@@ -2209,6 +2211,9 @@ fileInput.addEventListener('change', () => {
       }
     }
 
+    saveBtn.disabled = true;
+    discardBtn.disabled = true;
+
     const imageKey = pendingUpload.imageKey;
     const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
     const payloads = selectedPlayers.map(player => ({
@@ -2218,11 +2223,10 @@ fileInput.addEventListener('change', () => {
       created_at: createdAtValue,
     }));
 
-    // Move on now - the POSTs happen in the background.
     if (uploadQueue.length) {
-      showQueueItem(queueIndex + 1);
+      showQueueItem(queueIndex + 1); // re-enables the buttons once it renders
     } else {
-      resetResultPanel();
+      resetResultPanel(); // also re-enables the buttons
     }
 
     enqueueSaveOp(async () => {
@@ -2242,17 +2246,21 @@ fileInput.addEventListener('change', () => {
   });
 
   discardBtn.addEventListener('click', () => {
+    if (discardBtn.disabled) return; // ignore rapid double-clicks/taps
+    saveBtn.disabled = true;
+    discardBtn.disabled = true;
+
     if (pendingEdit) {
       if (queueSuspendedForEdit) {
         queueSuspendedForEdit = false;
-        showQueueItem(queueIndex); // cancel edit, back to paused queue photo
+        showQueueItem(queueIndex);
       } else {
         resetResultPanel();
       }
       return;
     }
     if (uploadQueue.length) {
-      showQueueItem(queueIndex + 1); // skip this queue photo
+      showQueueItem(queueIndex + 1);
     } else {
       resetResultPanel();
     }
