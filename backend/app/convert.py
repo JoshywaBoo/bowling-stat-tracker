@@ -22,6 +22,8 @@ import pillow_heif
 from PIL import Image, ImageOps
 from datetime import datetime
 
+cv2.setNumThreads(1)
+
 pillow_heif.register_heif_opener()
 
 # Long-edge cap in pixels. Gemini and most vision models internally resize/tile
@@ -140,57 +142,34 @@ def dist_to_center(box: tuple[int, int, int, int], cx: float, cy: float) -> floa
     return math.hypot((x + w / 2) - cx, (y + h / 2) - cy)
 
 
-def to_png_bytes(
-    raw_bytes: bytes,
-    max_dimension: int = MAX_IMAGE_DIMENSION,
-    auto_crop: bool = True,
-) -> tuple[bytes, str | None]:
-    """Decode arbitrary image bytes, downscale if needed, and re-encode as
-    PNG bytes. Returns (png_bytes, capture_date) where capture_date is an
-    ISO 8601 string read from EXIF, or None if unavailable."""
+def to_png_bytes(raw_bytes, max_dimension=MAX_IMAGE_DIMENSION, auto_crop=True):
     img = Image.open(BytesIO(raw_bytes))
-
-    # Read capture date before any transform touches the image. Orientation
-    # transposes don't strip EXIF, but this keeps the read as close to the
-    # original file as possible so nothing downstream can affect it.
     capture_date = extract_capture_date(img)
-
-    # Respect camera orientation (EXIF) before doing anything else, otherwise
-    # a resize can lock in a sideways/upside-down image.
     img = ImageOps.exif_transpose(img)
-
     if img.mode != "RGB":
         img = img.convert("RGB")
 
+    # Downscale immediately — we never need full original resolution.
+    width, height = img.size
+    if max(width, height) > MAX_DETECTION_DIMENSION:
+        scale = MAX_DETECTION_DIMENSION / max(width, height)
+        img = img.resize(
+            (max(1, int(width * scale)), max(1, int(height * scale))),
+            Image.BILINEAR,
+        )
+
     if auto_crop:
-        width, height = img.size
-        if max(width, height) > MAX_DETECTION_DIMENSION:
-            detect_scale = MAX_DETECTION_DIMENSION / max(width, height)
-            detect_size = (
-                max(1, int(width * detect_scale)),
-                max(1, int(height * detect_scale)),
-            )
-            detect_img = img.resize(detect_size, Image.BILINEAR)
-            box = detect_scoreboard_box(detect_img)
-            if box is not None:
-                inv_scale = 1 / detect_scale
-                x0, y0, x1, y1 = box
-                img = img.crop((
-                    int(x0 * inv_scale),
-                    int(y0 * inv_scale),
-                    int(x1 * inv_scale),
-                    int(y1 * inv_scale),
-                ))
-        else:
-            box = detect_scoreboard_box(img)
-            if box is not None:
-                img = img.crop(box)
+        box = detect_scoreboard_box(img)
+        if box is not None:
+            img = img.crop(box)
 
     width, height = img.size
     if max(width, height) > max_dimension:
         scale = max_dimension / max(width, height)
-        new_size = (max(1, int(width * scale)), max(1, int(height * scale)))
-        img = img.resize(new_size, Image.LANCZOS)
+        img = img.resize(
+            (max(1, int(width * scale)), max(1, int(height * scale))),
+            Image.LANCZOS,
+        )
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)
