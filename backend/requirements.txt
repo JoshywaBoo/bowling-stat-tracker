@@ -10,3 +10,4 @@ google-genai
 resend
 opencv-python-headless
 numpy
+gunicorn

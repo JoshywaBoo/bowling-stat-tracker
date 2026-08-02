@@ -1,7 +1,7 @@
 """
 ocr.py
 
-Reads a photo of an LED bowling scoreboard using a local Ollama vision model
+Reads a photo of an LED bowling scoreboard using a Gemini vision model
 and returns the frame-by-frame score line as a single string, e.g.:
 
     X X X 7- 33 X X X X3/
