@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://bowling-stat-tracker.onrender.com', // use this for production
+        target: 'https://bowling-stat-tracker-backend.onrender.com', // use this for production
         // target: 'http://127.0.0.1:8000', //use this for local development
         changeOrigin: true,
       },

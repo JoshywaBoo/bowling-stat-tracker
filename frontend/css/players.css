@@ -1,0 +1,69 @@
+.player-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.player-row:last-child {
+    border-bottom: none;
+}
+
+.player-row-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.player-name-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    color: var(--amber);
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    padding: 2px 0;
+    margin-bottom: 8px;
+    width: 100%;
+    max-width: 220px;
+}
+
+.player-name-input:hover,
+.player-name-input:focus {
+    outline: none;
+    border-bottom-color: var(--amber-dim);
+}
+
+.player-row-score {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--cyan);
+    text-shadow: 0 0 8px rgba(41, 230, 200, 0.4);
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.player-row .frames {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.player-select {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-top: -1px;
+}
+
+.player-select input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--cyan);
+    cursor: pointer;
+}
+
+.hide-checkboxes .player-select {
+    display: none;
+}

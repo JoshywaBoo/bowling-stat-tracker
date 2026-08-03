@@ -1,0 +1,114 @@
+section.history {
+    margin-top: 48px;
+}
+
+.history h2 {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin-bottom: 14px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 10px;
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--panel);
+}
+
+.history-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.history-main {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    flex: 0 1 auto;
+    min-width: 0;
+    margin: 0 6px 0 2px;
+    padding-right: 0;
+}
+
+.history-item .frame-string {
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    color: var(--amber);
+    letter-spacing: 1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.history-score {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cyan);
+    white-space: nowrap;
+}
+
+.history-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 0;
+}
+
+.history-item time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-right: 0;
+    margin-left: 0;
+}
+
+.btn-edit {
+    border: 1px solid var(--cyan);
+    background: transparent;
+    color: var(--cyan);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-edit:hover {
+    background: rgba(41, 230, 200, 0.12);
+}
+
+.btn-delete {
+    border: 1px solid var(--danger);
+    background: transparent;
+    color: var(--danger);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background: rgba(255, 93, 93, 0.12);
+}
+
+.empty-history {
+    font-size: 13px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 20px 0;
+}

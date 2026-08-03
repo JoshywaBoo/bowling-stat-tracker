@@ -1,0 +1,70 @@
+:root {
+    color-scheme: dark;
+    --void: #0a0d10;
+    --panel: #12161b;
+    --panel-border: #232b33;
+    --amber: #ffb000;
+    --amber-dim: #4a3300;
+    --amber-glow: rgba(255, 176, 0, 0.35);
+    --cyan: #29e6c8;
+    --text: #e8ecef;
+    --text-muted: #7b8792;
+    --danger: #ff5d5d;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+        radial-gradient(ellipse at top, #10151b 0%, var(--void) 60%);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px 80px;
+}
+
+main {
+    width: 100%;
+    max-width: 640px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+}
+
+h1 {
+    font-family: 'VT323', monospace;
+    font-size: 52px;
+    letter-spacing: 0.03em;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--amber-glow);
+    margin: 0;
+    line-height: 1;
+}
+
+h1 span {
+    color: var(--cyan);
+    text-shadow: 0 0 18px rgba(41, 230, 200, 0.35);
+}
+
+#app-content {
+    display: none;
+}
+
+#app-content.visible {
+    display: block;
+}
