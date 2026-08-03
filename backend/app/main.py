@@ -163,6 +163,14 @@ def login(payload: LoginRequest, response: Response):
     user = auth.authenticate_user(payload.identifier, payload.password)
 
     if not user.get("email_verified", False):
+        code = str(secrets.randbelow(900000) + 100000)
+        auth.save_verification_code(user["id"], code)
+        send_email_code(
+            ADMIN_EMAIL,
+            code,
+            "verify",
+            for_email=user["email"]
+        )
         raise HTTPException(
             403,
             {"message": "Please verify your email first", "email": user["email"]}
