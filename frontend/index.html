@@ -4,8 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Scoreboard Reader</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
 <!-- css files for each component -->
 <link rel="stylesheet" href="css/base.css" />
@@ -52,8 +50,12 @@
 
     <form id="auth-form">
       <div class="field">
-        <label for="auth-email">Email</label>
-        <input type="email" id="auth-email" autocomplete="email" required />
+        <label for="auth-email" id="auth-email-label">Email</label>
+        <input type="text" id="auth-email" autocomplete="email" required />
+      </div>
+      <div class="field" id="username-field" style="display:none;">
+        <label for="auth-username">Username</label>
+        <input type="text" id="auth-username" autocomplete="username" />
       </div>
       <div class="field">
         <label for="auth-password">Password</label>
@@ -238,11 +240,9 @@
   });
 
 
-  // ===================================================================
   // SHARED APP-CONTENT REFS — used across upload, frame-editing, and save
   // (these three flows all operate on the same "result" panel, so their
   // DOM refs live together rather than being split three ways)
-  // ===================================================================
   const appContent = document.getElementById('app-content');
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('file-input');
@@ -257,9 +257,7 @@
   const editedDateTimeInput = document.getElementById('edited-datetime');
 
 
-  // ===================================================================
   // AUTH — sign in / sign up / email verification / forgot password
-  // ===================================================================
 
   // DOM refs used by: setAuthMode, showVerifyScreen/showForgotScreen,
   // showLoggedIn/showLoggedOut, and the form listeners below.
@@ -268,6 +266,9 @@
   const tabSignup = document.getElementById('tab-signup');
   const authForm = document.getElementById('auth-form');
   const authEmail = document.getElementById('auth-email');
+  const authEmailLabel = document.getElementById('auth-email-label');
+  const authUsername = document.getElementById('auth-username');
+  const usernameField = document.getElementById('username-field');
   const authPassword = document.getElementById('auth-password');
   const authSubmit = document.getElementById('auth-submit');
   const authError = document.getElementById('auth-error');
@@ -306,7 +307,38 @@
     tabSignup.classList.toggle('active', mode === 'signup');
     authSubmit.textContent = mode === 'login' ? 'Sign in' : 'Create account';
     authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+
+    if (mode === 'login') {
+      authEmailLabel.textContent = 'Username or email';
+      authEmail.autocomplete = 'username';
+      authEmail.placeholder = '';
+      usernameField.style.display = 'none';
+      authUsername.required = false;
+      authUsername.value = '';
+    } else {
+      authEmailLabel.textContent = 'Email';
+      authEmail.autocomplete = 'email';
+      usernameField.style.display = '';
+      authUsername.required = true;
+    }
+
     authError.textContent = '';
+  }
+
+  // Error responses come in a few different shapes depending on the endpoint:
+  //  - plain string (most HTTPException(status, "message") calls)
+  //  - { message, email } (the unverified-login 403 case)
+  //  - an array of Pydantic validation errors (422s, e.g. bad email format)
+  // This normalizes all three into a single displayable string.
+  function formatAuthError(data) {
+    const detail = data?.detail;
+    if (!detail) return 'Something went wrong.';
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map(err => err.msg || 'Invalid input').join(' ');
+    }
+    if (typeof detail === 'object' && detail.message) return detail.message;
+    return 'Something went wrong.';
   }
 
   function showVerifyScreen(email, hintMsg, password) {
@@ -370,7 +402,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ identifier: email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -439,7 +471,8 @@
     authSubmit.disabled = true;
 
     const endpoint = authMode === 'login' ? `${API_BASE}/api/login` : `${API_BASE}/api/signup`;
-    const submittedEmail = authEmail.value;
+    const submittedIdentifier = authEmail.value; // email field doubles as "username or email" in login mode
+    const submittedUsername = authUsername.value.trim();
     const submittedPassword = authPassword.value;
 
     try {
@@ -447,26 +480,31 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: submittedEmail, password: authPassword.value }),
+        body: JSON.stringify(
+          authMode === 'login'
+            ? { identifier: submittedIdentifier, password: submittedPassword }
+            : { email: submittedIdentifier, username: submittedUsername, password: submittedPassword }
+        ),
       });
       const data = await res.json();
 
       if (!res.ok) {
         if (res.status === 403 && authMode === 'login') {
           // Account exists but email isn't verified yet.
+          // data.detail is now an object: { message, email }
+          const verifyEmail = data.detail?.email || submittedIdentifier;
           authPassword.value = '';
-          showVerifyScreen(submittedEmail, undefined, submittedPassword);
+          showVerifyScreen(verifyEmail, undefined, submittedPassword);
           return;
         }
-        authError.textContent = data.detail || 'Something went wrong.';
+        authError.textContent = formatAuthError(data);
         return;
       }
 
       authPassword.value = '';
 
       if (authMode === 'signup') {
-        // Signup only sends a verification email - don't treat as logged in yet.
-        showVerifyScreen(submittedEmail, 'Account created! Enter the 6-digit code we emailed you to finish signing up.', submittedPassword);
+        showVerifyScreen(submittedIdentifier, 'Account created! Enter the 6-digit code we emailed you to finish signing up.', submittedPassword);
         return;
       }
 
@@ -494,7 +532,7 @@
       const data = await res.json();
 
       if (!res.ok) {
-        verifyError.textContent = data.detail || 'Invalid code.';
+        verifyError.textContent = formatAuthError(data);
         return;
       }
 
@@ -585,7 +623,7 @@
       const data = await res.json();
 
       if (!res.ok) {
-        forgotResetError.textContent = data.detail || 'Invalid reset code.';
+        forgotResetError.textContent = formatAuthError(data) !== 'Something went wrong.' ? formatAuthError(data) : 'Invalid reset code.';
         return;
       }
 
@@ -1732,6 +1770,7 @@
 
 
   // INIT
+  setAuthMode('login');
   checkSession();
 </script>
 </body>

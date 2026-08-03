@@ -4,7 +4,7 @@ from urllib.parse import urlencode
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 
-API_BASE = os.environ.get("API_BASE", "https://bowling-stat-tracker.onrender.com")
+API_BASE = os.environ.get("API_BASE", "https://bowling-stat-tracker-backend.onrender.com")
 
 
 def send_email_code(email: str, code: str, purpose="verify", for_email: str | None = None):
