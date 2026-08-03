@@ -176,6 +176,10 @@ def login(payload: LoginRequest, response: Response):
             {"message": "Please verify your email first", "email": user["email"]}
         )
 
+    token = auth.create_session(user["id"])
+    auth.set_session_cookie(response, token)
+    return user
+
 
 @app.post("/api/logout")
 def logout(response: Response):
