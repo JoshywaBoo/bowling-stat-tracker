@@ -100,15 +100,6 @@ def row_to_game(row: sqlite3.Row) -> dict:
 
 # ------------------------------------------------------------------ players tab
 
-def row_to_game(row: sqlite3.Row) -> dict:
-    return {
-        "id": row["id"],
-        "player_name": row["player_name"],
-        "frame_string": row["frame_string"],
-        "created_at": row["created_at"],
-    }
-
-
 @app.get("/api/players")
 def list_players():
     """Public list of all verified accounts, for the Players tab."""
