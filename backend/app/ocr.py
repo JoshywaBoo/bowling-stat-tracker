@@ -36,11 +36,6 @@ import json
 from dotenv import load_dotenv
 load_dotenv()
 
-'''
-Models:
-"gemini-3.6-flash"
-"gemini-3.5-flash-lite"
-'''
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 MODEL = os.environ.get("MODEL", "gemini-3.5-flash-lite")
 
@@ -54,9 +49,18 @@ For EACH bowler shown, read:
 
 Symbols: X = strike, 1-9 = pins knocked down, / = spare, - = miss, F = foul.
 
+SPLITS: many scoreboards visually flag a split (a specific pattern of
+remaining pins after the first roll of a frame) by highlighting, circling,
+or coloring that roll's digit differently from the others. If a roll's
+symbol is shown with this kind of visual split indicator, prefix that
+symbol with an asterisk, e.g. "*7" instead of "7". Only the roll that is
+visually marked gets the asterisk - do not infer splits from the numbers
+yourself, only report what is visually indicated on the display. If you
+see no visual split indicators anywhere, don't add any asterisks.
+
 Return a JSON array, one object per bowler, in left-to-right/top-to-bottom
 display order:
-[{"name": "...", "rolls": "X,7,-,9,/,..."}, ...]
+[{"name": "...", "rolls": "X,7,-,*9,/,..."}, ...]
 
 Output ONLY the JSON array, no other text."""
 
@@ -68,7 +72,15 @@ def parse_frames(raw_symbols: list[str]) -> str:
 
     Frames 1-9: a strike ('X') is the whole frame; otherwise two symbols.
     Frame 10: 3 symbols if it opened with a strike or a spare, else 2.
+
+    Each symbol may optionally carry a leading '*' (split indicator, as
+    reported by the vision model). The '*' is cosmetic - all frame-boundary
+    logic below is based on the bare symbol - but it's preserved in the
+    output chunks unchanged, matching the frontend's split-marker format.
     """
+    def bare(tok: str) -> str:
+        return tok[1:] if tok.startswith("*") else tok
+
     symbols = list(raw_symbols)
     frames = []
     i = 0
@@ -78,7 +90,7 @@ def parse_frames(raw_symbols: list[str]) -> str:
             break
 
         if frame_num < 10:
-            if symbols[i] == "X":
+            if bare(symbols[i]) == "X":
                 frames.append(symbols[i])
                 i += 1
             else:
@@ -88,11 +100,11 @@ def parse_frames(raw_symbols: list[str]) -> str:
         else:
             # Frame 10 special-cases bonus rolls.
             r1 = symbols[i]
-            if r1 == "X":
+            if bare(r1) == "X":
                 chunk = symbols[i : i + 3]
             else:
                 r2 = symbols[i + 1] if i + 1 < len(symbols) else ""
-                if r2 == "/":
+                if bare(r2) == "/":
                     chunk = symbols[i : i + 3]
                 else:
                     chunk = symbols[i : i + 2]
@@ -114,7 +126,7 @@ def read_scoreboard(image_bytes: bytes) -> str:
 
     # Be forgiving of formatting the model might slip in anyway (spaces,
     # stray newlines, bullet punctuation) - keep only the roll symbols.
-    tokens = re.findall(r"X|[0-9]|/|-|F", raw.replace(",", " "))
+    tokens = re.findall(r"\*?(?:X|[0-9]|/|-|F)", raw.replace(",", " "))
 
     if not tokens:
         # Nothing usable came back - surface the raw text so it's visible
@@ -153,7 +165,7 @@ def read_scoreboard_multiplayer(image_bytes: bytes) -> list[dict]:
     for i, p in enumerate(players):
         name = p.get("name", "").strip()
         rolls_raw = p.get("rolls", "")
-        tokens = re.findall(r"X|[0-9]|/|-|F", rolls_raw.replace(",", " "))
+        tokens = re.findall(r"\*?(?:X|[0-9]|/|-|F)", rolls_raw.replace(",", " "))
 
         if not tokens:
             print(f"WARNING: player {i} ('{name}') had no readable rolls: {rolls_raw!r}")
