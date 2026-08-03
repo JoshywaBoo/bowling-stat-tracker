@@ -1087,20 +1087,22 @@
     // frame 10 with two splits, "*X5*/". This keeps everything in the one
     // string field the backend already stores, so it round-trips through
     // save/edit/history without needing a schema change.
-    function annotateFrameWithSplits(frame, state) {
-      if (!state) return frame;
+    function annotateFrameWithSplits(frame, markedIndices) {
+      if (!markedIndices || !markedIndices.length) return frame;
+      const markedSet = new Set(markedIndices);
       return frame
         .split('')
-        .map((ch, i) => {
-          const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-          return marked ? '*' + ch : ch;
-        })
+        .map((ch, i) => (markedSet.has(i) ? '*' + ch : ch))
         .join('');
     }
 
     // Inverse of the above: strips '*' markers out of a saved frame_string,
     // returning both the clean roll symbols (for scoring/editing) and a
     // { frameIndex: state } map describing which frames were marked.
+    // splitFrames[idx] is now the array of roll-indices (within that frame)
+    // that carry a split marker - e.g. [0], [1], [2], or [0, 2] - rather than
+    // a collapsed 0/1/2 "state" number. This lets any individual roll in
+    // frame 10 (or combinations, e.g. from OCR) be marked independently.
     function parseAnnotatedFrameString(frameString) {
       const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
       const rollSymbols = [];
@@ -1116,10 +1118,8 @@
             chars.push(frame[i]);
           }
         }
-        if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
-          splitFrames[idx] = 2;
-        } else if (marks.length >= 1) {
-          splitFrames[idx] = 1;
+        if (marks.length) {
+          splitFrames[idx] = marks;
         }
         rollSymbols.push(...chars);
       });
@@ -1172,9 +1172,10 @@
     // handling actual typing/caret/selection). Each character is colored
     // independently, so e.g. a 10th-frame box like "X72" only turns the
     // literal "X" cyan — the "7" and "2" stay amber.
-    function buildFrameOverlayHtml(frame, state) {
+    function buildFrameOverlayHtml(frame, markedIndices) {
+      const markedSet = new Set(markedIndices || []);
       return frame.split('').map((ch, i) => {
-        const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+        const marked = markedSet.has(i);
         const style = rollCharStyle(ch, marked);
         return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
       }).join('');
@@ -1265,19 +1266,40 @@
           cell.className = 'frame-cell';
 
           const isFrame10 = idx === 9;
-          const state = player.splitFrames[idx] || 0;
+          const markedIndices = player.splitFrames[idx] || [];
 
           const n = document.createElement('span');
-          n.className = 'frame-n' + (state ? ' split-marked' : '');
+          n.className = 'frame-n' + (markedIndices.length ? ' split-marked' : '');
           n.textContent = idx + 1;
           n.title = isFrame10
-            ? 'Click to toggle split (1st roll, then 1st + 3rd roll)'
+            ? 'Click to cycle: none → 1st roll → 2nd roll → 3rd roll → 1st + 3rd roll'
             : 'Click to toggle split';
           n.addEventListener('click', (e) => {
             e.stopPropagation();
-            const cur = player.splitFrames[idx] || 0;
-            const next = isFrame10 ? (cur + 1) % 3 : (cur ? 0 : 1);
-            if (next) {
+            const current = player.splitFrames[idx] || [];
+
+            let next;
+            if (!isFrame10) {
+              next = current.length ? [] : [0];
+            } else {
+              // Cycle: none -> roll1 -> roll2 -> roll3 -> roll1+roll3 -> none.
+              // Skips any state referencing a roll index that doesn't exist yet in
+              // this frame (e.g. an open 2-roll frame 10 has no index 2 to offer).
+              const rollCount = f.length;
+              const sameSet = (a, b) => a.length === b.length && a.every(v => b.includes(v));
+
+              const sequence = [[], [0], [1], [2], [0, 2]];
+              const currentPos = sequence.findIndex(s => sameSet(s, current));
+              let nextPos = (currentPos === -1 ? 0 : currentPos) + 1;
+
+              // Skip any step in the sequence that references a roll that doesn't exist yet.
+              while (nextPos < sequence.length && sequence[nextPos].some(i => i >= rollCount)) {
+                nextPos++;
+              }
+              next = nextPos < sequence.length ? sequence[nextPos] : [];
+            }
+
+            if (next.length) {
               player.splitFrames[idx] = next;
             } else {
               delete player.splitFrames[idx];
@@ -1311,7 +1333,7 @@
 
           const overlay = document.createElement('div');
           overlay.className = 'frame-overlay';
-          overlay.innerHTML = buildFrameOverlayHtml(f, state);
+          overlay.innerHTML = buildFrameOverlayHtml(f, markedIndices);
           inputWrap.appendChild(overlay);
 
           offset += f.length;
@@ -1776,7 +1798,7 @@
       if (!player.rollSymbols.length) return null;
       const frames = parseFrames(player.rollSymbols);
       const splitFrames = player.splitFrames || {};
-      return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || 0)).join(' ');
+      return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || [])).join(' ');
     }
 
     function enqueueSaveOp(run) {
