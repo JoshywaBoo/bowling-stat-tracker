@@ -1,0 +1,64 @@
+.dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 180px;
+    border: 2px dashed var(--panel-border);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dropzone:hover,
+.dropzone.dragover {
+    border-color: var(--amber);
+    background: #171c22;
+}
+
+.dropzone svg {
+    color: var(--text-muted);
+    margin: 0;
+    display: block;
+}
+
+.dropzone.dragover svg {
+    color: var(--amber);
+}
+
+.dropzone p {
+    margin: 0;
+}
+
+.dropzone .primary {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.dropzone .secondary {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.status {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-muted);
+    min-height: 20px;
+}
+
+.status.error {
+    color: var(--danger);
+}
