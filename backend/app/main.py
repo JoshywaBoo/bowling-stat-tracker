@@ -5,8 +5,8 @@ FastAPI app: create an account / log in, then upload photos of a bowling
 scoreboard, convert to PNG, parse with a vision model
 (app/ocr.py), and store result in a PostgreSQL database with the user's account.
 
-Then open http://127.0.0.1:8000
-(index.html is served from the sibling frontend/ folder - see FRONTEND_DIR below)
+uvicorn app.main:app --reload --port 8000 
+to test locally
 """
 
 import sqlite3
@@ -95,6 +95,55 @@ def row_to_game(row: sqlite3.Row) -> dict:
         "player_name": row["player_name"],
         "frame_string": row["frame_string"],
         "created_at": row["created_at"],
+    }
+
+
+# ------------------------------------------------------------------ players tab
+
+def row_to_game(row: sqlite3.Row) -> dict:
+    return {
+        "id": row["id"],
+        "player_name": row["player_name"],
+        "frame_string": row["frame_string"],
+        "created_at": row["created_at"],
+    }
+
+
+@app.get("/api/players")
+def list_players():
+    """Public list of all verified accounts, for the Players tab."""
+    with get_db() as conn:
+        rows = execute(
+            conn,
+            "SELECT username FROM users WHERE email_verified = TRUE ORDER BY username ASC",
+        ).fetchall()
+    return [{"username": r["username"]} for r in rows]
+
+
+@app.get("/api/players/{username}/games")
+def list_player_games(username: str):
+    """Public, read-only game history for one player - no auth required,
+    since this is meant to be browsable by anyone."""
+    with get_db() as conn:
+        user_row = execute(
+            conn,
+            "SELECT id, username FROM users WHERE username = ? AND email_verified = TRUE",
+            (username,),
+        ).fetchone()
+
+        if user_row is None:
+            raise HTTPException(404, "Player not found")
+
+        rows = execute(
+            conn,
+            "SELECT id, player_name, frame_string, created_at FROM games "
+            "WHERE user_id = ? ORDER BY id DESC",
+            (user_row["id"],),
+        ).fetchall()
+
+    return {
+        "username": user_row["username"],
+        "games": [row_to_game(r) for r in rows],
     }
 
 
