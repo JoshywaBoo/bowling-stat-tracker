@@ -476,11 +476,14 @@
 
       if (!res.ok) {
         if (res.status === 403 && authMode === 'login') {
+          // Account exists but email isn't verified yet.
+          // data.detail is now an object: { message, email }
+          const verifyEmail = data.detail?.email || submittedIdentifier;
           authPassword.value = '';
-          showVerifyScreen(submittedIdentifier, undefined, submittedPassword);
+          showVerifyScreen(verifyEmail, undefined, submittedPassword);
           return;
         }
-        authError.textContent = data.detail || 'Something went wrong.';
+        authError.textContent = (typeof data.detail === 'string' ? data.detail : data.detail?.message) || 'Something went wrong.';
         return;
       }
 

@@ -165,12 +165,8 @@ def login(payload: LoginRequest, response: Response):
     if not user.get("email_verified", False):
         raise HTTPException(
             403,
-            "Please verify your email first"
+            {"message": "Please verify your email first", "email": user["email"]}
         )
-    
-    token = auth.create_session(user["id"])
-    auth.set_session_cookie(response, token)
-    return user
 
 
 @app.post("/api/logout")
