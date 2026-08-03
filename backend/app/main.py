@@ -102,11 +102,12 @@ def row_to_game(row: sqlite3.Row) -> dict:
 
 class SignupRequest(BaseModel):
     email: EmailStr
+    username: str
     password: str
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    identifier: str
     password: str
 
 
@@ -134,14 +135,9 @@ def signup(payload: SignupRequest):
 
     user = auth.create_user(
         payload.email,
+        payload.username,
         payload.password
     )
-
-    if not user:
-        raise HTTPException(
-            400,
-            "Email already registered"
-        )
 
     code = str(secrets.randbelow(900000) + 100000)
 
@@ -164,7 +160,7 @@ def signup(payload: SignupRequest):
 
 @app.post("/api/login")
 def login(payload: LoginRequest, response: Response):
-    user = auth.authenticate_user(payload.email, payload.password)
+    user = auth.authenticate_user(payload.identifier, payload.password)
 
     if not user.get("email_verified", False):
         raise HTTPException(

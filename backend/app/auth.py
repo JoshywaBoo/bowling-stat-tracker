@@ -38,6 +38,7 @@ def init_auth_tables() -> None:
             CREATE TABLE IF NOT EXISTS users (
                 id BIGSERIAL PRIMARY KEY,
                 email TEXT NOT NULL UNIQUE,
+                username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
 
                 email_verified BOOLEAN DEFAULT FALSE,
@@ -85,10 +86,18 @@ def verify_password(password: str, stored_hash: str) -> bool:
     return hmac.compare_digest(check.hex(), digest_hex)
 
 
-def create_user(email: str, password: str) -> dict:
+def create_user(email: str, username: str, password: str) -> dict:
     email = email.strip().lower()
+    username = username.strip()
+
     if "@" not in email or len(email) < 3:
         raise HTTPException(400, "Enter a valid email address")
+    if len(username) < 3:
+        raise HTTPException(400, "Username must be at least 3 characters")
+    if len(username) > 32:
+        raise HTTPException(400, "Username must be 32 characters or fewer")
+    if not username.replace("_", "").replace(".", "").isalnum():
+        raise HTTPException(400, "Username can only contain letters, numbers, underscores, and periods")
     if len(password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
 
@@ -103,44 +112,49 @@ def create_user(email: str, password: str) -> dict:
                 INSERT INTO users 
                 (
                     email,
+                    username,
                     password_hash,
                     email_verified,
                     created_at
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?)
                 RETURNING id
                 """,
                 (
                     email,
+                    username,
                     password_hash,
                     False,
                     created_at
                 ),
             )
         except sqlite3.IntegrityError:
-            raise HTTPException(409, "An account with that email already exists")
+            raise HTTPException(409, "An account with that email or username already exists")
         except Exception as exc:
             if "duplicate key" in str(exc).lower() or "unique constraint" in str(exc).lower():
-                raise HTTPException(409, "An account with that email already exists") from exc
+                raise HTTPException(409, "An account with that email or username already exists") from exc
             raise
 
-    return {"id": user_id, "email": email}
+    return {"id": user_id, "email": email, "username": username}
 
-
-def authenticate_user(email: str, password: str) -> dict:
-    email = email.strip().lower()
+def authenticate_user(identifier: str, password: str) -> dict:
+    identifier = identifier.strip()
     with get_db() as conn:
-        row = execute(conn, "SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        row = execute(
+            conn,
+            "SELECT * FROM users WHERE email = ? OR username = ?",
+            (identifier.lower(), identifier),
+        ).fetchone()
 
     if row is None or not verify_password(password, row["password_hash"]):
-        raise HTTPException(401, "Incorrect email or password")
+        raise HTTPException(401, "Incorrect username/email or password")
 
     return {
         "id": row["id"],
         "email": row["email"],
+        "username": row["username"],
         "email_verified": row["email_verified"]
     }
-
 
 def create_session(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
@@ -164,7 +178,7 @@ def _get_user_from_token(token: str) -> dict | None:
         row = execute(
             conn,
             """
-            SELECT users.id, users.email, sessions.expires_at
+            SELECT users.id, users.email, users.username, sessions.expires_at
             FROM sessions
             JOIN users ON users.id = sessions.user_id
             WHERE sessions.token = ?
@@ -179,7 +193,7 @@ def _get_user_from_token(token: str) -> dict | None:
         delete_session(token)
         return None
 
-    return {"id": row["id"], "email": row["email"]}
+    return {"id": row["id"], "email": row["email"], "username": row["username"]}
 
 
 def get_current_user(request: Request) -> dict:
