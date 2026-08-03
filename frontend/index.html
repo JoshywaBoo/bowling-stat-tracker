@@ -49,13 +49,13 @@
     </div>
 
     <form id="auth-form">
-      <div class="field" id="username-field" style="display:none;">
-        <label for="auth-username">Username</label>
-        <input type="text" id="auth-username" autocomplete="username" />
-      </div>
       <div class="field">
         <label for="auth-email" id="auth-email-label">Email</label>
         <input type="text" id="auth-email" autocomplete="email" required />
+      </div>
+      <div class="field" id="username-field" style="display:none;">
+        <label for="auth-username">Username</label>
+        <input type="text" id="auth-username" autocomplete="username" />
       </div>
       <div class="field">
         <label for="auth-password">Password</label>
@@ -325,6 +325,22 @@
     authError.textContent = '';
   }
 
+  // Error responses come in a few different shapes depending on the endpoint:
+  //  - plain string (most HTTPException(status, "message") calls)
+  //  - { message, email } (the unverified-login 403 case)
+  //  - an array of Pydantic validation errors (422s, e.g. bad email format)
+  // This normalizes all three into a single displayable string.
+  function formatAuthError(data) {
+    const detail = data?.detail;
+    if (!detail) return 'Something went wrong.';
+    if (typeof detail === 'string') return detail;
+    if (Array.isArray(detail)) {
+      return detail.map(err => err.msg || 'Invalid input').join(' ');
+    }
+    if (typeof detail === 'object' && detail.message) return detail.message;
+    return 'Something went wrong.';
+  }
+
   function showVerifyScreen(email, hintMsg, password) {
     pendingVerifyEmail = email;
     pendingVerifyPassword = password || null;
@@ -481,7 +497,7 @@
           showVerifyScreen(verifyEmail, undefined, submittedPassword);
           return;
         }
-        authError.textContent = (typeof data.detail === 'string' ? data.detail : data.detail?.message) || 'Something went wrong.';
+        authError.textContent = formatAuthError(data);
         return;
       }
 
@@ -516,7 +532,7 @@
       const data = await res.json();
 
       if (!res.ok) {
-        verifyError.textContent = data.detail || 'Invalid code.';
+        verifyError.textContent = formatAuthError(data);
         return;
       }
 
@@ -607,7 +623,7 @@
       const data = await res.json();
 
       if (!res.ok) {
-        forgotResetError.textContent = data.detail || 'Invalid reset code.';
+        forgotResetError.textContent = formatAuthError(data) !== 'Something went wrong.' ? formatAuthError(data) : 'Invalid reset code.';
         return;
       }
 
