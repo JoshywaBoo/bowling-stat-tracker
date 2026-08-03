@@ -172,5 +172,5 @@ def to_png_bytes(raw_bytes, max_dimension=MAX_IMAGE_DIMENSION, auto_crop=True):
         )
 
     buf = BytesIO()
-    img.save(buf, format="PNG", optimize=True)
+    img.save(buf, format="PNG")
     return buf.getvalue(), capture_date
