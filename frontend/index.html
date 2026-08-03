@@ -154,6 +154,18 @@
       <div id="history-list"></div>
     </section>
   </div>
+
+  <div id="players-content">
+    <div id="players-list-view">
+      <div id="players-list"></div>
+    </div>
+
+    <div id="player-detail-view" style="display:none;">
+      <button type="button" class="link-btn" id="player-detail-back">&larr; Back to players</button>
+      <h2 id="player-detail-name"></h2>
+      <div id="player-detail-history"></div>
+    </div>
+  </div>
 </main>
 
 <script>
@@ -189,8 +201,10 @@
   let isLoggedIn = false;
   let navDropdownOpen = false;
 
+
   function updateAppVisibility() {
     if (currentView === 'me') {
+      playersContent.style.display = 'none';
       if (isLoggedIn) {
         appContent.classList.add('visible');
         authPanel.classList.remove('visible');
@@ -207,7 +221,10 @@
     }
 
     if (currentView === 'players') {
-      historyList.innerHTML = '<p class="empty-history">Players view coming soon.</p>';
+      playersContent.style.display = '';
+      loadPlayersList();
+    } else {
+      playersContent.style.display = 'none';
     }
   }
 
@@ -1767,6 +1784,98 @@
     } else {
       resetResultPanel();
     }
+  });
+  
+
+  // PLAYERS TAB
+  // displays a list of all registered players
+  // clicking a player name opens a page showing their history
+  // should be identical to the me page at this point, except without
+  // the upload file input and edit panel
+  // history items won't have edit/delete buttons
+  const playersContent = document.getElementById('players-content');
+  const playersListView = document.getElementById('players-list-view');
+  const playersListEl = document.getElementById('players-list');
+  const playerDetailView = document.getElementById('player-detail-view');
+  const playerDetailBack = document.getElementById('player-detail-back');
+  const playerDetailName = document.getElementById('player-detail-name');
+  const playerDetailHistory = document.getElementById('player-detail-history');
+
+  let selectedPlayerUsername = null;
+
+  async function loadPlayersList() {
+    playersListView.style.display = '';
+    playerDetailView.style.display = 'none';
+    playersListEl.innerHTML = '<p class="empty-history">Loading players…</p>';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/players`);
+      if (!res.ok) throw new Error();
+      const players = await res.json();
+
+      if (!players.length) {
+        playersListEl.innerHTML = '<p class="empty-history">No players yet.</p>';
+        return;
+      }
+
+      playersListEl.innerHTML = '';
+      players.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.style.cursor = 'pointer';
+        item.innerHTML = `<span class="frame-string">${p.username}</span>`;
+        item.addEventListener('click', () => openPlayerDetail(p.username));
+        playersListEl.appendChild(item);
+      });
+    } catch {
+      playersListEl.innerHTML = '<p class="empty-history">Could not load players.</p>';
+    }
+  }
+
+  async function openPlayerDetail(username) {
+    selectedPlayerUsername = username;
+    playersListView.style.display = 'none';
+    playerDetailView.style.display = '';
+    playerDetailName.textContent = username;
+    playerDetailHistory.innerHTML = '<p class="empty-history">Loading games…</p>';
+
+    try {
+      const res = await fetch(`${API_BASE}/api/players/${encodeURIComponent(username)}/games`);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      renderPlayerHistory(data.games);
+    } catch {
+      playerDetailHistory.innerHTML = '<p class="empty-history">Could not load this player\'s games.</p>';
+    }
+  }
+
+  // Same rendering as renderHistory(), minus the edit/delete buttons.
+  function renderPlayerHistory(games) {
+    playerDetailHistory.innerHTML = '';
+    if (!games.length) {
+      playerDetailHistory.innerHTML = '<p class="empty-history">No games yet.</p>';
+      return;
+    }
+    games.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
+      item.innerHTML = `
+        <div class="history-main">
+          <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+          <span class="history-score">${cleanScore}</span>
+        </div>
+        <div class="history-item-actions">
+          <time>${formatTime(g.created_at)}</time>
+        </div>
+      `;
+      playerDetailHistory.appendChild(item);
+    });
+  }
+
+  playerDetailBack.addEventListener('click', () => {
+    selectedPlayerUsername = null;
+    loadPlayersList();
   });
 
 
