@@ -1,5 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://bowling-stat-tracker.onrender.com/api/:path*" }
+    { "source": "/api/:path*", "destination": "https://bowling-stat-tracker-backend.onrender.com/api/:path*" }
   ]
 }
