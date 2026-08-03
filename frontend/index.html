@@ -154,31 +154,37 @@
 </main>
 
 <script>
+  // CONFIG — constants used everywhere below 
   const API_BASE = "";
 
-  /* old account bar
-  const accountBar = document.getElementById('account-bar');
-  const accountEmail = document.getElementById('account-email');
-  const logoutBtn = document.getElementById('logout-btn');
-  */
+  // Only these symbols are ever valid on a bowling scoreboard roll.
+  // Used by: sanitizeText, keydown handler (frames section)
+  const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
+  const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
 
+  // Used by: kickOffUpload / pumpUploadQueue (upload section)
+  const MAX_CONCURRENT_UPLOADS = 1; // only one upload in flight at a time
+
+
+  // NAVIGATION — top nav bar, view switching (Me / Players), dropdown
+
+  // DOM refs used by: updateAppVisibility, setNavView, setNavDropdownOpen,
+  // and the nav-related listeners just below.
+  const navLinkMe = document.getElementById('nav-link-me');
+  const navLinkPlayers = document.getElementById('nav-link-players');
   const navLoginTrigger = document.getElementById('nav-login-trigger');
+  const navLoginBtn = document.getElementById('nav-login-btn');
   const navAvatarContainer = document.getElementById('nav-avatar-container');
   const navAvatar = document.getElementById('nav-avatar');
   const navDropdown = document.getElementById('nav-dropdown');
   const navDropdownEmail = document.getElementById('nav-dropdown-email');
   const navLogoutBtn = document.getElementById('nav-logout-btn');
   const historySearch = document.getElementById('history-search');
-
-  /* Navigation bar links */
-  const navLinkMe = document.getElementById('nav-link-me');
-  const navLinkPlayers = document.getElementById('nav-link-players');
-
-  const navAccountEl = document.querySelector('.nav-account');
-  const navLoginBtn = document.getElementById('nav-login-btn');
+  const navAccountEl = document.querySelector('.nav-account'); // currently unreferenced elsewhere, kept for parity
 
   let currentView = 'players';
   let isLoggedIn = false;
+  let navDropdownOpen = false;
 
   function updateAppVisibility() {
     if (currentView === 'me') {
@@ -209,18 +215,14 @@
     updateAppVisibility();
   }
 
-  navLinkMe.addEventListener('click', () => setNavView('me'));
-  navLinkPlayers.addEventListener('click', () => setNavView('players'));
-  navLoginBtn.addEventListener('click', () => setNavView('me'));
-
-  /* */
-  let navDropdownOpen = false;
-  let allGames = [];
-
   function setNavDropdownOpen(open) {
     navDropdownOpen = open;
     navDropdown.style.display = open ? 'block' : 'none';
   }
+
+  navLinkMe.addEventListener('click', () => setNavView('me'));
+  navLinkPlayers.addEventListener('click', () => setNavView('players'));
+  navLoginBtn.addEventListener('click', () => setNavView('me'));
 
   navAvatarContainer.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -235,6 +237,32 @@
     showLoggedOut();
   });
 
+
+  // ===================================================================
+  // SHARED APP-CONTENT REFS — used across upload, frame-editing, and save
+  // (these three flows all operate on the same "result" panel, so their
+  // DOM refs live together rather than being split three ways)
+  // ===================================================================
+  const appContent = document.getElementById('app-content');
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('file-input');
+  const statusEl = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  const playerRowsEl = document.getElementById('player-rows');
+  const resultThumb = document.getElementById('result-thumb');
+  const historyList = document.getElementById('history-list');
+  const saveBtn = document.getElementById('save-btn');
+  const discardBtn = document.getElementById('discard-btn');
+  const saveError = document.getElementById('save-error');
+  const editedDateTimeInput = document.getElementById('edited-datetime');
+
+
+  // ===================================================================
+  // AUTH — sign in / sign up / email verification / forgot password
+  // ===================================================================
+
+  // DOM refs used by: setAuthMode, showVerifyScreen/showForgotScreen,
+  // showLoggedIn/showLoggedOut, and the form listeners below.
   const authPanel = document.getElementById('auth-panel');
   const tabLogin = document.getElementById('tab-login');
   const tabSignup = document.getElementById('tab-signup');
@@ -244,7 +272,6 @@
   const authSubmit = document.getElementById('auth-submit');
   const authError = document.getElementById('auth-error');
   const forgotPasswordBtn = document.getElementById('forgot-password-btn');
-  const appContent = document.getElementById('app-content');
 
   const verifyPanel = document.getElementById('verify-panel');
   const verifyForm = document.getElementById('verify-form');
@@ -267,378 +294,11 @@
   const forgotResetError = document.getElementById('forgot-reset-error');
   const forgotBackBtn = document.getElementById('forgot-back-btn');
 
+  let authMode = 'login';
   let pendingVerifyEmail = null;
   let pendingResetEmail = null;
   let pendingVerifyPassword = null;
   let verifyPollTimer = null;
-
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file-input');
-  const statusEl = document.getElementById('status');
-  const resultEl = document.getElementById('result');
-  const playerRowsEl = document.getElementById('player-rows');
-  const resultThumb = document.getElementById('result-thumb');
-  const historyList = document.getElementById('history-list');
-  const saveBtn = document.getElementById('save-btn');
-  const discardBtn = document.getElementById('discard-btn');
-  const saveError = document.getElementById('save-error');
-  const editedDateTimeInput = document.getElementById('edited-datetime');
-
-  let authMode = 'login';
-
-  // Each entry: { file, promise, result, error }
-  // - promise resolves to the parsed /api/upload response (or rejects on failure)
-  // - result/error get filled in once the promise settles, so showQueueItem()
-  //   doesn't need to re-await something that already finished
-  let uploadQueue = [];
-  let queueIndex = 0;
-  let queueSuspendedForEdit = false;
-  let queueRequestToken = 0;
-
-  // ---- upload concurrency pool ----
-  // Uploads are launched from a self-refilling pool, not tied to how fast
-  // the user reviews/saves/discards. The moment a request comes back
-  // (success or failure), the next unstarted file is launched immediately.
-  const MAX_CONCURRENT_UPLOADS = 1; // only one upload in flight at a time
-  let activeUploadCount = 0;
-  let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
-
-  let pendingUpload = null;
-  let pendingEdit = null; // { gameId }
-  let pendingRetry = null; // { index } - set when the currently-shown queue item failed
-
-  // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
-  // Single-player flows (editing a saved game) just use a 1-item array.
-  let players = [];
-
-  // Only these symbols are ever valid on a bowling scoreboard roll.
-  const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
-  const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
-
-  // ------------------------------------------------------ frame grouping
-  // Mirrors parse_frames() in app/ocr.py exactly, plus one safety net: if
-  // more symbols exist than a legal 10-frame game can hold (shouldn't
-  // happen with real data, but can happen transiently while editing),
-  // extra symbols are grouped as additional 2-symbol frames instead of
-  // being silently dropped, so nothing the user typed disappears.
-  function parseFrames(symbols) {
-    const frames = [];
-    let i = 0;
-
-    for (let frameNum = 1; frameNum <= 10 || i < symbols.length; frameNum++) {
-      if (i >= symbols.length) break;
-
-      let chunk;
-      if (frameNum < 10) {
-        if (symbols[i] === 'X') {
-          chunk = [symbols[i]];
-        } else {
-          chunk = symbols.slice(i, i + 2);
-        }
-      } else if (frameNum === 10) {
-        // Editing needs a stable box, not one that reclassifies mid-typing.
-        // Just take up to 3 remaining symbols — legality (strike/spare
-        // required for a 3rd roll) is validated server-side on save, not here.
-        chunk = symbols.slice(i, i + 3);
-      } else {
-        // Overflow past frame 10 - not a real bowling frame, just a safety
-        // net so extra typed symbols stay visible instead of vanishing.
-        chunk = symbols.slice(i, i + 2);
-      }
-
-      i += chunk.length;
-      frames.push(chunk.join(''));
-    }
-
-    return frames;
-  }
-
-  function flattenFrameString(frameString) {
-    return frameString.replace(/\s+/g, '').split('');
-  }
-
-  // ------------------------------------------------- split-marker encoding
-  // Splits are a cosmetic annotation (first roll of a frame left a split,
-  // or for frame 10 specifically, first AND third roll each left one).
-  // They're encoded directly into the saved frame_string using a leading
-  // '*' immediately before the marked character, e.g. "*7/" or, for a
-  // frame 10 with two splits, "*X5*/". This keeps everything in the one
-  // string field the backend already stores, so it round-trips through
-  // save/edit/history without needing a schema change.
-  function annotateFrameWithSplits(frame, state) {
-    if (!state) return frame;
-    return frame
-      .split('')
-      .map((ch, i) => {
-        const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-        return marked ? '*' + ch : ch;
-      })
-      .join('');
-  }
-
-  // Inverse of the above: strips '*' markers out of a saved frame_string,
-  // returning both the clean roll symbols (for scoring/editing) and a
-  // { frameIndex: state } map describing which frames were marked.
-  function parseAnnotatedFrameString(frameString) {
-    const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
-    const rollSymbols = [];
-    const splitFrames = {};
-
-    frames.forEach((frame, idx) => {
-      const marks = [];
-      const chars = [];
-      for (let i = 0; i < frame.length; i++) {
-        if (frame[i] === '*') {
-          marks.push(chars.length);
-        } else {
-          chars.push(frame[i]);
-        }
-      }
-      if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
-        splitFrames[idx] = 2;
-      } else if (marks.length >= 1) {
-        splitFrames[idx] = 1;
-      }
-      rollSymbols.push(...chars);
-    });
-
-    return { rollSymbols, splitFrames };
-  }
-
-  // For display-only contexts (history list) where we just want to render
-  // marked characters in red without needing the parsed symbol array.
-  function stripSplitMarkers(str) {
-    return (str || '').replace(/\*/g, '');
-  }
-
-  // Shared per-character color rules for a roll symbol: split marks win
-  // (red), then strikes (cyan), then everything else (amber). Used by
-  // both the editable frame overlay and the read-only history list so
-  // the two stay in sync.
-  function rollCharStyle(ch, marked) {
-    if (marked) {
-      return { color: 'var(--danger)', shadow: '0 0 8px rgba(255, 93, 93, 0.4)' };
-    }
-    const isX = ch.toUpperCase() === 'X';
-    return isX
-      ? { color: 'var(--cyan)', shadow: '0 0 8px rgba(41, 230, 200, 0.4)' }
-      : { color: 'var(--amber)', shadow: '0 0 8px var(--amber-glow)' };
-  }
-
-  function frameStringToHtml(frameString) {
-    return (frameString || '').split(' ').map(frame => {
-      let out = '';
-      for (let i = 0; i < frame.length; i++) {
-        if (frame[i] === '*') {
-          const ch = frame[i + 1] || '';
-          const style = rollCharStyle(ch, true);
-          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-          i += 1;
-        } else {
-          const ch = frame[i];
-          const style = rollCharStyle(ch, false);
-          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-        }
-      }
-      return out;
-    }).join(' ');
-  }
-
-  // Builds the colored-overlay markup shown over a frame-input whenever
-  // that frame has a split marked (the input's own text is made
-  // transparent so only this overlay is visible, while the input keeps
-  // handling actual typing/caret/selection). Each character is colored
-  // independently, so e.g. a 10th-frame box like "X72" only turns the
-  // literal "X" cyan — the "7" and "2" stay amber.
-  function buildFrameOverlayHtml(frame, state) {
-    return frame.split('').map((ch, i) => {
-      const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-      const style = rollCharStyle(ch, marked);
-      return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-    }).join('');
-  }
-
-  function parseRollValue(char) {
-    if (!char) return 0;
-    const normalized = char.toUpperCase();
-    if (normalized === 'X') return 10;
-    if (normalized === '-' || normalized === 'F') return 0;
-    const value = Number(normalized);
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  function kickOffUpload(entry) {
-    activeUploadCount++;
-
-    const formData = new FormData();
-    formData.append('file', entry.file);
-    formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
-
-    entry.promise = fetch(`${API_BASE}/api/upload`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
-        entry.result = data;
-        return data;
-      })
-      .catch((err) => {
-        entry.error = err.message || 'Upload failed';
-        throw err;
-      })
-      .finally(() => {
-        activeUploadCount--;
-        pumpUploadQueue(); // this slot is free — launch the next unstarted file
-      });
-  }
-
-  // Keeps up to MAX_CONCURRENT_UPLOADS in flight at all times, launching a
-  // new file the moment a slot opens up — not tied to save/discard/review speed.
-  function pumpUploadQueue() {
-    while (activeUploadCount < MAX_CONCURRENT_UPLOADS && nextUploadToLaunch < uploadQueue.length) {
-      kickOffUpload(uploadQueue[nextUploadToLaunch]);
-      nextUploadToLaunch++;
-    }
-  }
-
-  function startUploadQueue(files) {
-    const queueActive = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
-
-    if (!queueActive) {
-      // No queue running — start fresh, same as before.
-      resetResultPanel();
-      uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
-      queueIndex = 0;
-      nextUploadToLaunch = 0;
-      activeUploadCount = 0;
-      pumpUploadQueue();
-      showQueueItem(0);
-      return;
-    }
-
-    // A queue is already processing — append instead of clobbering it.
-    const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
-    uploadQueue.push(...newEntries);
-    pumpUploadQueue(); // picks up the new entries once a slot frees up
-    if (!queueSuspendedForEdit) {                       // ADD THIS GUARD
-      document.getElementById('queue-progress').textContent =
-        `Photo ${queueIndex + 1}/${uploadQueue.length}`;
-    }
-  }
-
-  async function showQueueItem(index) {
-    if (index >= uploadQueue.length) {
-      document.getElementById('queue-progress').textContent = '';
-      resultEl.classList.remove('visible');
-      setStatus('All photos processed.');
-      uploadQueue = [];
-      queueIndex = 0;
-      loadHistory();
-      return;
-    }
-
-    queueIndex = index;
-    const token = ++queueRequestToken;
-    const entry = uploadQueue[index];
-    document.getElementById('queue-progress').textContent =
-      `Photo ${index + 1}/${uploadQueue.length}`;
-
-    pendingUpload = null;
-    pendingEdit = null;              // <-- add this: resuming the queue always ends any pending edit
-    pendingRetry = null;             // <-- clear any stale retry state from a previous failed item
-    players = [];
-    playerRowsEl.innerHTML = '';
-    playerRowsEl.classList.remove('hide-checkboxes'); // also make sure checkboxes come back for multi-player queue items
-    saveBtn.textContent = 'Save game';   // <-- add this: undo "Save changes" label left over from editing
-    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
-      URL.revokeObjectURL(resultThumb.src);
-    }
-    resultThumb.removeAttribute('src');
-    saveBtn.disabled = true;
-    discardBtn.disabled = true;
-    resultEl.classList.add('visible');
-
-    setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
-
-    try {
-      // entry.promise should already be in flight (or settled) thanks to
-      // pumpUploadQueue; kick it off directly only as a defensive fallback.
-      const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
-      if (token !== queueRequestToken) return; // superseded by a newer call
-
-      setStatus('');
-      pendingUpload = { imageKey: '' };
-      players = data.players.map(p => {
-        const parsed = parseAnnotatedFrameString(p.frame_string);
-        return {
-          name: p.name || '',
-          rollSymbols: parsed.rollSymbols,
-          pendingCursor: null,
-          selected: true,
-          splitFrames: parsed.splitFrames,
-        };
-      });
-      playerRowsEl.classList.remove('hide-checkboxes');
-      editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
-      renderEditableFrames();
-
-      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
-        URL.revokeObjectURL(resultThumb.src);
-      }
-      resultThumb.src = data.preview_image.startsWith('data:')
-        ? dataUrlToBlobUrl(data.preview_image)
-        : data.preview_image;
-      resultEl.classList.add('visible');
-    } catch {
-      if (token !== queueRequestToken) return;
-      setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
-      playerRowsEl.innerHTML = '';
-      resultThumb.removeAttribute('src');
-      players = [];
-      pendingUpload = null;
-      pendingRetry = { index };      // let the user retry this specific queue slot
-      saveBtn.textContent = 'Retry';
-      resultEl.classList.add('visible');
-    } finally {
-      if (token === queueRequestToken) {
-        saveBtn.disabled = false;
-        discardBtn.disabled = false;
-      }
-    }
-  }
-
-  // Re-sends the failed file to the OCR endpoint by re-queuing it as a
-  // fresh entry (so it goes through the normal concurrency pool), then
-  // moves the UI forward to whatever's next, same as Discard would.
-  // The retried entry will get its own turn in showQueueItem() once the
-  // queue reaches it.
-  function retryCurrentUpload() {
-    if (!pendingRetry) return;
-    const { index } = pendingRetry;
-    const failedEntry = uploadQueue[index];
-    pendingRetry = null;
-    if (!failedEntry) return;
-
-    const retryEntry = { file: failedEntry.file, promise: null, result: null, error: null };
-    uploadQueue.push(retryEntry);
-    pumpUploadQueue(); // launches it once a slot is free, just like any queued upload
-
-    showQueueItem(queueIndex + 1);
-  }
-
-  function dataUrlToBlobUrl(dataUrl) {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/data:(.*?);base64/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return URL.createObjectURL(new Blob([bytes], { type: mime }));
-  }
-
-  // ------------------------------------------------------------- auth UI
 
   function setAuthMode(mode) {
     authMode = mode;
@@ -648,8 +308,6 @@
     authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
     authError.textContent = '';
   }
-  tabLogin.addEventListener('click', () => setAuthMode('login'));
-  tabSignup.addEventListener('click', () => setAuthMode('signup'));
 
   function showVerifyScreen(email, hintMsg, password) {
     pendingVerifyEmail = email;
@@ -746,7 +404,7 @@
 
   function showLoggedIn(user) {
     stopVerifyPolling();
-    isLoggedIn = true;   // ← add this
+    isLoggedIn = true;
     navAvatarContainer.style.display = 'block';
     navLoginTrigger.style.display = 'none';
     navAvatar.textContent = (user.email || '?').charAt(0).toUpperCase();
@@ -755,7 +413,7 @@
     verifyPanel.classList.remove('visible');
     forgotPanel.classList.remove('visible');
     loadHistory();
-    updateAppVisibility();   // ← replace the direct appContent.classList.add('visible') with this
+    updateAppVisibility();
   }
 
   function showLoggedOut() {
@@ -769,8 +427,11 @@
     setNavDropdownOpen(false);
     verifyPanel.classList.remove('visible');
     forgotPanel.classList.remove('visible');
-    updateAppVisibility();   // ← replace the direct appContent.classList.remove('visible') with this
+    updateAppVisibility();
   }
+
+  tabLogin.addEventListener('click', () => setAuthMode('login'));
+  tabSignup.addEventListener('click', () => setAuthMode('signup'));
 
   authForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -961,7 +622,204 @@
     }
   }
 
-  // -------------------------------------------------------------- upload
+
+  // UPLOAD QUEUE — drag/drop + file picker, OCR requests, concurrency pool
+
+  // Each entry: { file, promise, result, error }
+  // - promise resolves to the parsed /api/upload response (or rejects on failure)
+  // - result/error get filled in once the promise settles, so showQueueItem()
+  //   doesn't need to re-await something that already finished
+  let uploadQueue = [];
+  let queueIndex = 0;
+  let queueSuspendedForEdit = false;
+  let queueRequestToken = 0;
+
+  // ---- upload concurrency pool ----
+  // Uploads are launched from a self-refilling pool, not tied to how fast
+  // the user reviews/saves/discards. The moment a request comes back
+  // (success or failure), the next unstarted file is launched immediately.
+  let activeUploadCount = 0;
+  let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
+
+  let pendingUpload = null;
+  let pendingEdit = null; // { gameId }
+  let pendingRetry = null; // { index } - set when the currently-shown queue item failed
+
+  function kickOffUpload(entry) {
+    activeUploadCount++;
+
+    const formData = new FormData();
+    formData.append('file', entry.file);
+    formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
+
+    entry.promise = fetch(`${API_BASE}/api/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        entry.result = data;
+        return data;
+      })
+      .catch((err) => {
+        entry.error = err.message || 'Upload failed';
+        throw err;
+      })
+      .finally(() => {
+        activeUploadCount--;
+        pumpUploadQueue(); // this slot is free — launch the next unstarted file
+      });
+  }
+
+  // Keeps up to MAX_CONCURRENT_UPLOADS in flight at all times, launching a
+  // new file the moment a slot opens up — not tied to save/discard/review speed.
+  function pumpUploadQueue() {
+    while (activeUploadCount < MAX_CONCURRENT_UPLOADS && nextUploadToLaunch < uploadQueue.length) {
+      kickOffUpload(uploadQueue[nextUploadToLaunch]);
+      nextUploadToLaunch++;
+    }
+  }
+
+  function startUploadQueue(files) {
+    const queueActive = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
+
+    if (!queueActive) {
+      // No queue running — start fresh, same as before.
+      resetResultPanel();
+      uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
+      queueIndex = 0;
+      nextUploadToLaunch = 0;
+      activeUploadCount = 0;
+      pumpUploadQueue();
+      showQueueItem(0);
+      return;
+    }
+
+    // A queue is already processing — append instead of clobbering it.
+    const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
+    uploadQueue.push(...newEntries);
+    pumpUploadQueue(); // picks up the new entries once a slot frees up
+    if (!queueSuspendedForEdit) {
+      document.getElementById('queue-progress').textContent =
+        `Photo ${queueIndex + 1}/${uploadQueue.length}`;
+    }
+  }
+
+  async function showQueueItem(index) {
+    if (index >= uploadQueue.length) {
+      document.getElementById('queue-progress').textContent = '';
+      resultEl.classList.remove('visible');
+      setStatus('All photos processed.');
+      uploadQueue = [];
+      queueIndex = 0;
+      loadHistory();
+      return;
+    }
+
+    queueIndex = index;
+    const token = ++queueRequestToken;
+    const entry = uploadQueue[index];
+    document.getElementById('queue-progress').textContent =
+      `Photo ${index + 1}/${uploadQueue.length}`;
+
+    pendingUpload = null;
+    pendingEdit = null;              // resuming the queue always ends any pending edit
+    pendingRetry = null;             // clear any stale retry state from a previous failed item
+    players = [];
+    playerRowsEl.innerHTML = '';
+    playerRowsEl.classList.remove('hide-checkboxes'); // make sure checkboxes come back for multi-player queue items
+    saveBtn.textContent = 'Save game';   // undo "Save changes" label left over from editing
+    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+      URL.revokeObjectURL(resultThumb.src);
+    }
+    resultThumb.removeAttribute('src');
+    saveBtn.disabled = true;
+    discardBtn.disabled = true;
+    resultEl.classList.add('visible');
+
+    setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
+
+    try {
+      // entry.promise should already be in flight (or settled) thanks to
+      // pumpUploadQueue; kick it off directly only as a defensive fallback.
+      const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
+      if (token !== queueRequestToken) return; // superseded by a newer call
+
+      setStatus('');
+      pendingUpload = { imageKey: '' };
+      players = data.players.map(p => {
+        const parsed = parseAnnotatedFrameString(p.frame_string);
+        return {
+          name: p.name || '',
+          rollSymbols: parsed.rollSymbols,
+          pendingCursor: null,
+          selected: true,
+          splitFrames: parsed.splitFrames,
+        };
+      });
+      playerRowsEl.classList.remove('hide-checkboxes');
+      editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
+      renderEditableFrames();
+
+      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+        URL.revokeObjectURL(resultThumb.src);
+      }
+      resultThumb.src = data.preview_image.startsWith('data:')
+        ? dataUrlToBlobUrl(data.preview_image)
+        : data.preview_image;
+      resultEl.classList.add('visible');
+    } catch {
+      if (token !== queueRequestToken) return;
+      setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
+      playerRowsEl.innerHTML = '';
+      resultThumb.removeAttribute('src');
+      players = [];
+      pendingUpload = null;
+      pendingRetry = { index };      // let the user retry this specific queue slot
+      saveBtn.textContent = 'Retry';
+      resultEl.classList.add('visible');
+    } finally {
+      if (token === queueRequestToken) {
+        saveBtn.disabled = false;
+        discardBtn.disabled = false;
+      }
+    }
+  }
+
+  // Re-sends the failed file to the OCR endpoint by re-queuing it as a
+  // fresh entry (so it goes through the normal concurrency pool), then
+  // moves the UI forward to whatever's next, same as Discard would.
+  // The retried entry will get its own turn in showQueueItem() once the
+  // queue reaches it.
+  function retryCurrentUpload() {
+    if (!pendingRetry) return;
+    const { index } = pendingRetry;
+    const failedEntry = uploadQueue[index];
+    pendingRetry = null;
+    if (!failedEntry) return;
+
+    const retryEntry = { file: failedEntry.file, promise: null, result: null, error: null };
+    uploadQueue.push(retryEntry);
+    pumpUploadQueue(); // launches it once a slot is free, just like any queued upload
+
+    showQueueItem(queueIndex + 1);
+  }
+
+  function dataUrlToBlobUrl(dataUrl) {
+    const [header, base64] = dataUrl.split(',');
+    const mime = header.match(/data:(.*?);base64/)[1];
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: mime }));
+  }
+
+  function setStatus(msg, isError = false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('error', isError);
+  }
 
   ['dragover', 'dragenter'].forEach(evt =>
     dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
@@ -969,17 +827,172 @@
   ['dragleave', 'drop'].forEach(evt =>
     dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
   );
- dropzone.addEventListener('drop', e => {
-  const files = Array.from(e.dataTransfer.files);
-  if (files.length) startUploadQueue(files);
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) startUploadQueue(Array.from(fileInput.files));
-});
+  dropzone.addEventListener('drop', e => {
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length) startUploadQueue(files);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) startUploadQueue(Array.from(fileInput.files));
+  });
 
-  function setStatus(msg, isError = false) {
-    statusEl.textContent = msg;
-    statusEl.classList.toggle('error', isError);
+
+  // FRAMES / SCORING — parsing roll symbols into bowling frames,
+  // rendering the editable frame boxes, and score calculation
+
+  // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
+  // Single-player flows (editing a saved game) just use a 1-item array.
+  let players = [];
+
+  // ------------------------------------------------------ frame grouping
+  // Mirrors parse_frames() in app/ocr.py exactly, plus one safety net: if
+  // more symbols exist than a legal 10-frame game can hold (shouldn't
+  // happen with real data, but can happen transiently while editing),
+  // extra symbols are grouped as additional 2-symbol frames instead of
+  // being silently dropped, so nothing the user typed disappears.
+  function parseFrames(symbols) {
+    const frames = [];
+    let i = 0;
+
+    for (let frameNum = 1; frameNum <= 10 || i < symbols.length; frameNum++) {
+      if (i >= symbols.length) break;
+
+      let chunk;
+      if (frameNum < 10) {
+        if (symbols[i] === 'X') {
+          chunk = [symbols[i]];
+        } else {
+          chunk = symbols.slice(i, i + 2);
+        }
+      } else if (frameNum === 10) {
+        // Editing needs a stable box, not one that reclassifies mid-typing.
+        // Just take up to 3 remaining symbols — legality (strike/spare
+        // required for a 3rd roll) is validated server-side on save, not here.
+        chunk = symbols.slice(i, i + 3);
+      } else {
+        // Overflow past frame 10 - not a real bowling frame, just a safety
+        // net so extra typed symbols stay visible instead of vanishing.
+        chunk = symbols.slice(i, i + 2);
+      }
+
+      i += chunk.length;
+      frames.push(chunk.join(''));
+    }
+
+    return frames;
+  }
+
+  function flattenFrameString(frameString) {
+    return frameString.replace(/\s+/g, '').split('');
+  }
+
+  // ------------------------------------------------- split-marker encoding
+  // Splits are a cosmetic annotation (first roll of a frame left a split,
+  // or for frame 10 specifically, first AND third roll each left one).
+  // They're encoded directly into the saved frame_string using a leading
+  // '*' immediately before the marked character, e.g. "*7/" or, for a
+  // frame 10 with two splits, "*X5*/". This keeps everything in the one
+  // string field the backend already stores, so it round-trips through
+  // save/edit/history without needing a schema change.
+  function annotateFrameWithSplits(frame, state) {
+    if (!state) return frame;
+    return frame
+      .split('')
+      .map((ch, i) => {
+        const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+        return marked ? '*' + ch : ch;
+      })
+      .join('');
+  }
+
+  // Inverse of the above: strips '*' markers out of a saved frame_string,
+  // returning both the clean roll symbols (for scoring/editing) and a
+  // { frameIndex: state } map describing which frames were marked.
+  function parseAnnotatedFrameString(frameString) {
+    const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
+    const rollSymbols = [];
+    const splitFrames = {};
+
+    frames.forEach((frame, idx) => {
+      const marks = [];
+      const chars = [];
+      for (let i = 0; i < frame.length; i++) {
+        if (frame[i] === '*') {
+          marks.push(chars.length);
+        } else {
+          chars.push(frame[i]);
+        }
+      }
+      if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
+        splitFrames[idx] = 2;
+      } else if (marks.length >= 1) {
+        splitFrames[idx] = 1;
+      }
+      rollSymbols.push(...chars);
+    });
+
+    return { rollSymbols, splitFrames };
+  }
+
+  // For display-only contexts (history list) where we just want to render
+  // marked characters in red without needing the parsed symbol array.
+  function stripSplitMarkers(str) {
+    return (str || '').replace(/\*/g, '');
+  }
+
+  // Shared per-character color rules for a roll symbol: split marks win
+  // (red), then strikes (cyan), then everything else (amber). Used by
+  // both the editable frame overlay and the read-only history list so
+  // the two stay in sync.
+  function rollCharStyle(ch, marked) {
+    if (marked) {
+      return { color: 'var(--danger)', shadow: '0 0 8px rgba(255, 93, 93, 0.4)' };
+    }
+    const isX = ch.toUpperCase() === 'X';
+    return isX
+      ? { color: 'var(--cyan)', shadow: '0 0 8px rgba(41, 230, 200, 0.4)' }
+      : { color: 'var(--amber)', shadow: '0 0 8px var(--amber-glow)' };
+  }
+
+  function frameStringToHtml(frameString) {
+    return (frameString || '').split(' ').map(frame => {
+      let out = '';
+      for (let i = 0; i < frame.length; i++) {
+        if (frame[i] === '*') {
+          const ch = frame[i + 1] || '';
+          const style = rollCharStyle(ch, true);
+          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+          i += 1;
+        } else {
+          const ch = frame[i];
+          const style = rollCharStyle(ch, false);
+          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+        }
+      }
+      return out;
+    }).join(' ');
+  }
+
+  // Builds the colored-overlay markup shown over a frame-input whenever
+  // that frame has a split marked (the input's own text is made
+  // transparent so only this overlay is visible, while the input keeps
+  // handling actual typing/caret/selection). Each character is colored
+  // independently, so e.g. a 10th-frame box like "X72" only turns the
+  // literal "X" cyan — the "7" and "2" stay amber.
+  function buildFrameOverlayHtml(frame, state) {
+    return frame.split('').map((ch, i) => {
+      const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+      const style = rollCharStyle(ch, marked);
+      return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+    }).join('');
+  }
+
+  function parseRollValue(char) {
+    if (!char) return 0;
+    const normalized = char.toUpperCase();
+    if (normalized === 'X') return 10;
+    if (normalized === '-' || normalized === 'F') return 0;
+    const value = Number(normalized);
+    return Number.isFinite(value) ? value : 0;
   }
 
   function sanitizeText(raw) {
@@ -1236,32 +1249,6 @@ fileInput.addEventListener('change', () => {
     }
   });
 
-  function formatTime(iso) {
-    try {
-      return new Date(iso).toLocaleString(undefined, {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
-      });
-    } catch {
-      return '';
-    }
-  }
-
-  function formatDateTimeInput(iso) {
-    try {
-      const value = iso || new Date().toISOString();
-      // Naive datetime (e.g. EXIF capture_date) has no timezone designator —
-      // it's already wall-clock time, so use it directly.
-      if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(value)) {
-        return value.slice(0, 16);
-      }
-      const date = new Date(value);
-      const offset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-    } catch {
-      return '';
-    }
-  }
-
   function validateGame(symbols) {
     const frames = parseFrames(symbols);
 
@@ -1427,6 +1414,36 @@ fileInput.addEventListener('change', () => {
     return score;
   }
 
+  function formatTime(iso) {
+    try {
+      return new Date(iso).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+      });
+    } catch {
+      return '';
+    }
+  }
+
+  function formatDateTimeInput(iso) {
+    try {
+      const value = iso || new Date().toISOString();
+      // Naive datetime (e.g. EXIF capture_date) has no timezone designator —
+      // it's already wall-clock time, so use it directly.
+      if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(value)) {
+        return value.slice(0, 16);
+      }
+      const date = new Date(value);
+      const offset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+    } catch {
+      return '';
+    }
+  }
+
+
+  // HISTORY — past games list, search filter, edit/delete actions
+  let allGames = [];
+
   function renderHistory(games) {
     historyList.innerHTML = '';
     if (!games.length) {
@@ -1472,7 +1489,7 @@ fileInput.addEventListener('change', () => {
     resultEl.classList.add('visible');
     saveBtn.textContent = 'Save changes';
     setStatus('Editing previous game');
-    document.getElementById('queue-progress').textContent = 'Editing a past game'; // ADD THIS
+    document.getElementById('queue-progress').textContent = 'Editing a past game';
   }
 
   historyList.addEventListener('click', async (e) => {
@@ -1528,6 +1545,17 @@ fileInput.addEventListener('change', () => {
 
   historySearch.addEventListener('input', applyHistoryFilter);
 
+
+  // SAVE / DISCARD — persisting the result panel back to the server
+
+  // ---------------------------------------------------------- background saves
+  // Saving/editing shouldn't block the UI. Once client-side validation
+  // passes, the request is handed to this queue and the UI moves on right
+  // away. Requests run one at a time, in order, so a save/edit can't race
+  // a later one against the same game.
+  let saveOpQueue = [];
+  let saveOpRunning = false;
+
   function resetResultPanel() {
     queueRequestToken++;
     saveBtn.disabled = false;
@@ -1555,14 +1583,6 @@ fileInput.addEventListener('change', () => {
     const splitFrames = player.splitFrames || {};
     return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || 0)).join(' ');
   }
-
-  // ---------------------------------------------------------- background saves
-  // Saving/editing shouldn't block the UI. Once client-side validation
-  // passes, the request is handed to this queue and the UI moves on right
-  // away. Requests run one at a time, in order, so a save/edit can't race
-  // a later one against the same game.
-  let saveOpQueue = [];
-  let saveOpRunning = false;
 
   function enqueueSaveOp(run) {
     saveOpQueue.push(run);
@@ -1710,6 +1730,8 @@ fileInput.addEventListener('change', () => {
     }
   });
 
+
+  // INIT
   checkSession();
 </script>
 </body>
