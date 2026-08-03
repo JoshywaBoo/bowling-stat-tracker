@@ -1,1379 +1,1555 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="icon" href="/favicon.png" />
-<title>Bowling Stat Tracker</title>
 
-<!-- css files for each component -->
-<link rel="stylesheet" href="css/base.css" />
-<link rel="stylesheet" href="css/nav.css" />
-<link rel="stylesheet" href="css/auth.css" />
-<link rel="stylesheet" href="css/upload.css" />
-<link rel="stylesheet" href="css/frames.css" />
-<link rel="stylesheet" href="css/players.css" />
-<link rel="stylesheet" href="css/history.css" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="/favicon.png" />
+  <title>Bowling Stat Tracker</title>
+
+  <!-- css files for each component -->
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/nav.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/upload.css" />
+  <link rel="stylesheet" href="css/frames.css" />
+  <link rel="stylesheet" href="css/players.css" />
+  <link rel="stylesheet" href="css/history.css" />
 
 </head>
+
 <body>
-<main>
-  <nav class="nav-bar" id="nav-bar">
-    <div class="nav-links">
-      <button type="button" class="nav-link-btn" id="nav-link-me">Me</button>
-      <button type="button" class="nav-link-btn active" id="nav-link-players">Players</button>
-    </div>
-
-    <form class="nav-search-form" onsubmit="return false;">
-      <input type="text" id="history-search" class="nav-search" placeholder="search your games..." />
-    </form>
-
-    <div class="nav-account">
-      <div class="nav-login-btn-container" id="nav-login-trigger" style="display:none;">
-        <button class="nav-login-btn" id="nav-login-btn">Sign in</button>
+  <main>
+    <nav class="nav-bar" id="nav-bar">
+      <div class="nav-links">
+        <button type="button" class="nav-link-btn" id="nav-link-me">Me</button>
+        <button type="button" class="nav-link-btn active" id="nav-link-players">Players</button>
       </div>
 
-      <div class="nav-avatar-container" id="nav-avatar-container" style="display:none;">
-        <div class="nav-avatar" id="nav-avatar"></div>
-        <div class="nav-dropdown" id="nav-dropdown" style="display:none;">
-          <button class="nav-dropdown-item muted" id="nav-dropdown-email"></button>
-          <button class="nav-dropdown-item" id="nav-logout-btn">Log out</button>
+      <form class="nav-search-form" onsubmit="return false;">
+        <input type="text" id="history-search" class="nav-search" placeholder="search your games..." />
+      </form>
+
+      <div class="nav-account">
+        <div class="nav-login-btn-container" id="nav-login-trigger" style="display:none;">
+          <button class="nav-login-btn" id="nav-login-btn">Sign in</button>
+        </div>
+
+        <div class="nav-avatar-container" id="nav-avatar-container" style="display:none;">
+          <div class="nav-avatar" id="nav-avatar"></div>
+          <div class="nav-dropdown" id="nav-dropdown" style="display:none;">
+            <button class="nav-dropdown-item muted" id="nav-dropdown-email"></button>
+            <button class="nav-dropdown-item" id="nav-logout-btn">Log out</button>
+          </div>
         </div>
       </div>
-    </div>
-  </nav>
+    </nav>
 
-  <div class="auth-panel" id="auth-panel">
-    <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" data-tab="login">Sign in</button>
-      <button class="auth-tab" id="tab-signup" data-tab="signup">Create account</button>
-    </div>
+    <div class="auth-panel" id="auth-panel">
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" data-tab="login">Sign in</button>
+        <button class="auth-tab" id="tab-signup" data-tab="signup">Create account</button>
+      </div>
 
-    <form id="auth-form">
-      <div class="field">
-        <label for="auth-email" id="auth-email-label">Email</label>
-        <input type="text" id="auth-email" autocomplete="email" required />
-      </div>
-      <div class="field" id="username-field" style="display:none;">
-        <label for="auth-username">Username</label>
-        <input type="text" id="auth-username" autocomplete="username" />
-      </div>
-      <div class="field">
-        <label for="auth-password">Password</label>
-        <input type="password" id="auth-password" autocomplete="current-password" required />
-      </div>
+      <form id="auth-form">
+        <div class="field">
+          <label for="auth-email" id="auth-email-label">Email</label>
+          <input type="text" id="auth-email" autocomplete="email" required />
+        </div>
+        <div class="field" id="username-field" style="display:none;">
+          <label for="auth-username">Username</label>
+          <input type="text" id="auth-username" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input type="password" id="auth-password" autocomplete="current-password" required />
+        </div>
         <button type="submit" class="btn-primary" id="auth-submit">Sign in</button>
-          <p class="auth-error" id="auth-error"></p>
-        </form>
-        <button type="button" class="link-btn" id="forgot-password-btn" style="margin-top:14px;">Forgot password?</button>
-  </div>
-  
-  <div class="auth-panel" id="verify-panel">
-    <div class="auth-tabs">
-      <span class="auth-tab active">Verify your email</span>
-    </div>
-    <form id="verify-form">
-      <p class="result-hint" id="verify-hint">Enter the 6-digit code we emailed you.</p>
-      <div class="field">
-        <label for="verify-code">Verification code</label>
-        <input type="text" id="verify-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
-      </div>
-      <button type="submit" class="btn-primary" id="verify-submit">Verify</button>
-      <p class="auth-error" id="verify-error"></p>
-    </form>
-    <button type="button" class="link-btn" id="resend-code-btn" style="margin-top:10px;">Resend code</button>
-    <button type="button" class="link-btn" id="verify-back-btn" style="margin-top:10px; margin-left:14px;">Back to sign in</button>
-  </div>
-
-  <div class="auth-panel" id="forgot-panel">
-    <div class="auth-tabs">
-      <span class="auth-tab active">Reset password</span>
-    </div>
-    <form id="forgot-request-form">
-      <p class="result-hint" id="forgot-hint">Enter your account email and we'll send a reset code.</p>
-      <div class="field">
-        <label for="forgot-email">Email</label>
-        <input type="email" id="forgot-email" autocomplete="email" required />
-      </div>
-      <button type="submit" class="btn-primary" id="forgot-request-submit">Send reset code</button>
-      <p class="auth-error" id="forgot-request-error"></p>
-    </form>
-
-    <form id="forgot-reset-form" style="display:none;">
-      <div class="field">
-        <label for="reset-code">Reset code</label>
-        <input type="text" id="reset-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
-      </div>
-      <div class="field">
-        <label for="reset-new-password">New password</label>
-        <input type="password" id="reset-new-password" autocomplete="new-password" required />
-      </div>
-      <button type="submit" class="btn-primary" id="forgot-reset-submit">Reset password</button>
-      <p class="auth-error" id="forgot-reset-error"></p>
-    </form>
-
-    <button type="button" class="link-btn" id="forgot-back-btn" style="margin-top:10px;">Back to sign in</button>
-  </div>
-
-  <div id="app-content">
-    <label class="dropzone" id="dropzone" for="file-input">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-        <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <p class="primary">Drop a scoreboard photo, or click to choose one</p>
-      <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
-    </label>
-    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
-
-    <p class="status" id="status"></p>
-
-    <div class="result" id="result">
-      <div class="result-header">
-        <span class="label">Review &amp; edit before saving</span>
-      </div>
-      <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
-      <div class="result-meta">
-        <label for="edited-datetime">Date / time</label>
-        <input type="datetime-local" id="edited-datetime" />
-      </div>
-      <div class="player-rows" id="player-rows"></div>
-      <div class="thumb-row">
-        <img id="result-thumb" alt="Uploaded scoreboard" />
-      </div>
-      <p class="status" id="queue-progress"></p>
-      <div class="result-actions">
-        <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
-        <button type="button" class="btn-discard" id="discard-btn">Discard</button>
-      </div>
-      <p class="save-error" id="save-error"></p>
+        <p class="auth-error" id="auth-error"></p>
+      </form>
+      <button type="button" class="link-btn" id="forgot-password-btn" style="margin-top:14px;">Forgot password?</button>
     </div>
 
-    <section class="history">
-      <h2>Your previous games</h2>
-      <div id="history-list"></div>
-    </section>
-  </div>
-</main>
+    <div class="auth-panel" id="verify-panel">
+      <div class="auth-tabs">
+        <span class="auth-tab active">Verify your email</span>
+      </div>
+      <form id="verify-form">
+        <p class="result-hint" id="verify-hint">Enter the 6-digit code we emailed you.</p>
+        <div class="field">
+          <label for="verify-code">Verification code</label>
+          <input type="text" id="verify-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+        </div>
+        <button type="submit" class="btn-primary" id="verify-submit">Verify</button>
+        <p class="auth-error" id="verify-error"></p>
+      </form>
+      <button type="button" class="link-btn" id="resend-code-btn" style="margin-top:10px;">Resend code</button>
+      <button type="button" class="link-btn" id="verify-back-btn" style="margin-top:10px; margin-left:14px;">Back to
+        sign in</button>
+    </div>
 
-<script>
-  // CONFIG — constants used everywhere below 
-  const API_BASE = "";
+    <div class="auth-panel" id="forgot-panel">
+      <div class="auth-tabs">
+        <span class="auth-tab active">Reset password</span>
+      </div>
+      <form id="forgot-request-form">
+        <p class="result-hint" id="forgot-hint">Enter your account email and we'll send a reset code.</p>
+        <div class="field">
+          <label for="forgot-email">Email</label>
+          <input type="email" id="forgot-email" autocomplete="email" required />
+        </div>
+        <button type="submit" class="btn-primary" id="forgot-request-submit">Send reset code</button>
+        <p class="auth-error" id="forgot-request-error"></p>
+      </form>
 
-  // Only these symbols are ever valid on a bowling scoreboard roll.
-  // Used by: sanitizeText, keydown handler (frames section)
-  const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
-  const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
+      <form id="forgot-reset-form" style="display:none;">
+        <div class="field">
+          <label for="reset-code">Reset code</label>
+          <input type="text" id="reset-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
+        </div>
+        <div class="field">
+          <label for="reset-new-password">New password</label>
+          <input type="password" id="reset-new-password" autocomplete="new-password" required />
+        </div>
+        <button type="submit" class="btn-primary" id="forgot-reset-submit">Reset password</button>
+        <p class="auth-error" id="forgot-reset-error"></p>
+      </form>
 
-  // Used by: kickOffUpload / pumpUploadQueue (upload section)
-  const MAX_CONCURRENT_UPLOADS = 1; // only one upload in flight at a time
+      <button type="button" class="link-btn" id="forgot-back-btn" style="margin-top:10px;">Back to sign in</button>
+    </div>
+
+    <div id="app-content">
+      <label class="dropzone" id="dropzone" for="file-input">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <p class="primary">Drop a scoreboard photo, or click to choose one</p>
+        <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
+      </label>
+      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
+
+      <p class="status" id="status"></p>
+
+      <div class="result" id="result">
+        <div class="result-header">
+          <span class="label">Review &amp; edit before saving</span>
+        </div>
+        <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
+        <div class="result-meta">
+          <label for="edited-datetime">Date / time</label>
+          <input type="datetime-local" id="edited-datetime" />
+        </div>
+        <div class="player-rows" id="player-rows"></div>
+        <div class="thumb-row">
+          <div class="thumb-zoom-wrap" id="thumb-zoom-wrap">
+            <img id="result-thumb" alt="Uploaded scoreboard" />
+          </div>
+        </div>
+        <p class="status" id="queue-progress"></p>
+        <div class="result-actions">
+          <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
+          <button type="button" class="btn-discard" id="discard-btn">Discard</button>
+        </div>
+        <p class="save-error" id="save-error"></p>
+      </div>
+
+      <section class="history">
+        <h2>Your previous games</h2>
+        <div id="history-list"></div>
+      </section>
+    </div>
+
+    <div id="players-content">
+      <div id="players-list-view">
+        <div id="players-list"></div>
+      </div>
+
+      <div id="player-detail-view" style="display:none;">
+        <button type="button" class="link-btn" id="player-detail-back">&larr; Back to players</button>
+        <h2 id="player-detail-name"></h2>
+        <div id="player-detail-history"></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // CONFIG — constants used everywhere below 
+    const API_BASE = "";
+
+    // Only these symbols are ever valid on a bowling scoreboard roll.
+    // Used by: sanitizeText, keydown handler (frames section)
+    const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
+    const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
+
+    // Used by: kickOffUpload / pumpUploadQueue (upload section)
+    const MAX_CONCURRENT_UPLOADS = 1; // only one upload in flight at a time
 
 
-  // NAVIGATION — top nav bar, view switching (Me / Players), dropdown
+    // NAVIGATION — top nav bar, view switching (Me / Players), dropdown
 
-  // DOM refs used by: updateAppVisibility, setNavView, setNavDropdownOpen,
-  // and the nav-related listeners just below.
-  const navLinkMe = document.getElementById('nav-link-me');
-  const navLinkPlayers = document.getElementById('nav-link-players');
-  const navLoginTrigger = document.getElementById('nav-login-trigger');
-  const navLoginBtn = document.getElementById('nav-login-btn');
-  const navAvatarContainer = document.getElementById('nav-avatar-container');
-  const navAvatar = document.getElementById('nav-avatar');
-  const navDropdown = document.getElementById('nav-dropdown');
-  const navDropdownEmail = document.getElementById('nav-dropdown-email');
-  const navLogoutBtn = document.getElementById('nav-logout-btn');
-  const historySearch = document.getElementById('history-search');
-  const navAccountEl = document.querySelector('.nav-account'); // currently unreferenced elsewhere, kept for parity
+    // DOM refs used by: updateAppVisibility, setNavView, setNavDropdownOpen,
+    // and the nav-related listeners just below.
+    const navLinkMe = document.getElementById('nav-link-me');
+    const navLinkPlayers = document.getElementById('nav-link-players');
+    const navLoginTrigger = document.getElementById('nav-login-trigger');
+    const navLoginBtn = document.getElementById('nav-login-btn');
+    const navAvatarContainer = document.getElementById('nav-avatar-container');
+    const navAvatar = document.getElementById('nav-avatar');
+    const navDropdown = document.getElementById('nav-dropdown');
+    const navDropdownEmail = document.getElementById('nav-dropdown-email');
+    const navLogoutBtn = document.getElementById('nav-logout-btn');
+    const historySearch = document.getElementById('history-search');
+    const navAccountEl = document.querySelector('.nav-account'); // currently unreferenced elsewhere, kept for parity
 
-  let currentView = 'players';
-  let isLoggedIn = false;
-  let navDropdownOpen = false;
+    let currentView = 'players';
+    let isLoggedIn = false;
+    let navDropdownOpen = false;
 
-  function updateAppVisibility() {
-    if (currentView === 'me') {
-      if (isLoggedIn) {
-        appContent.classList.add('visible');
-        authPanel.classList.remove('visible');
-        applyHistoryFilter();
+
+    function updateAppVisibility() {
+      if (currentView === 'me') {
+        playersContent.style.display = 'none';
+        if (isLoggedIn) {
+          appContent.classList.add('visible');
+          authPanel.classList.remove('visible');
+          applyHistoryFilter();
+        } else {
+          appContent.classList.remove('visible');
+          authPanel.classList.add('visible');
+        }
       } else {
         appContent.classList.remove('visible');
-        authPanel.classList.add('visible');
+        authPanel.classList.remove('visible');
+        verifyPanel.classList.remove('visible');
+        forgotPanel.classList.remove('visible');
       }
-    } else {
-      appContent.classList.remove('visible');
-      authPanel.classList.remove('visible');
-      verifyPanel.classList.remove('visible');
-      forgotPanel.classList.remove('visible');
-    }
 
-    if (currentView === 'players') {
-      historyList.innerHTML = '<p class="empty-history">Players view coming soon.</p>';
-    }
-  }
-
-  function setNavView(view) {
-    currentView = view;
-    navLinkMe.classList.toggle('active', view === 'me');
-    navLinkPlayers.classList.toggle('active', view === 'players');
-    updateAppVisibility();
-  }
-
-  function setNavDropdownOpen(open) {
-    navDropdownOpen = open;
-    navDropdown.style.display = open ? 'block' : 'none';
-  }
-
-  navLinkMe.addEventListener('click', () => setNavView('me'));
-  navLinkPlayers.addEventListener('click', () => setNavView('players'));
-  navLoginBtn.addEventListener('click', () => setNavView('me'));
-
-  navAvatarContainer.addEventListener('click', (e) => {
-    e.stopPropagation();
-    setNavDropdownOpen(!navDropdownOpen);
-  });
-  document.addEventListener('click', () => {
-    if (navDropdownOpen) setNavDropdownOpen(false);
-  });
-  navLogoutBtn.addEventListener('click', async (e) => {
-    e.stopPropagation();
-    await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
-    showLoggedOut();
-  });
-
-
-  // SHARED APP-CONTENT REFS — used across upload, frame-editing, and save
-  // (these three flows all operate on the same "result" panel, so their
-  // DOM refs live together rather than being split three ways)
-  const appContent = document.getElementById('app-content');
-  const dropzone = document.getElementById('dropzone');
-  const fileInput = document.getElementById('file-input');
-  const statusEl = document.getElementById('status');
-  const resultEl = document.getElementById('result');
-  const playerRowsEl = document.getElementById('player-rows');
-  const resultThumb = document.getElementById('result-thumb');
-  const historyList = document.getElementById('history-list');
-  const saveBtn = document.getElementById('save-btn');
-  const discardBtn = document.getElementById('discard-btn');
-  const saveError = document.getElementById('save-error');
-  const editedDateTimeInput = document.getElementById('edited-datetime');
-
-
-  // AUTH — sign in / sign up / email verification / forgot password
-
-  // DOM refs used by: setAuthMode, showVerifyScreen/showForgotScreen,
-  // showLoggedIn/showLoggedOut, and the form listeners below.
-  const authPanel = document.getElementById('auth-panel');
-  const tabLogin = document.getElementById('tab-login');
-  const tabSignup = document.getElementById('tab-signup');
-  const authForm = document.getElementById('auth-form');
-  const authEmail = document.getElementById('auth-email');
-  const authEmailLabel = document.getElementById('auth-email-label');
-  const authUsername = document.getElementById('auth-username');
-  const usernameField = document.getElementById('username-field');
-  const authPassword = document.getElementById('auth-password');
-  const authSubmit = document.getElementById('auth-submit');
-  const authError = document.getElementById('auth-error');
-  const forgotPasswordBtn = document.getElementById('forgot-password-btn');
-
-  const verifyPanel = document.getElementById('verify-panel');
-  const verifyForm = document.getElementById('verify-form');
-  const verifyCode = document.getElementById('verify-code');
-  const verifySubmit = document.getElementById('verify-submit');
-  const verifyError = document.getElementById('verify-error');
-  const verifyHint = document.getElementById('verify-hint');
-  const resendCodeBtn = document.getElementById('resend-code-btn');
-  const verifyBackBtn = document.getElementById('verify-back-btn');
-
-  const forgotPanel = document.getElementById('forgot-panel');
-  const forgotRequestForm = document.getElementById('forgot-request-form');
-  const forgotEmail = document.getElementById('forgot-email');
-  const forgotRequestSubmit = document.getElementById('forgot-request-submit');
-  const forgotRequestError = document.getElementById('forgot-request-error');
-  const forgotResetForm = document.getElementById('forgot-reset-form');
-  const resetCode = document.getElementById('reset-code');
-  const resetNewPassword = document.getElementById('reset-new-password');
-  const forgotResetSubmit = document.getElementById('forgot-reset-submit');
-  const forgotResetError = document.getElementById('forgot-reset-error');
-  const forgotBackBtn = document.getElementById('forgot-back-btn');
-
-  let authMode = 'login';
-  let pendingVerifyEmail = null;
-  let pendingResetEmail = null;
-  let pendingVerifyPassword = null;
-  let verifyPollTimer = null;
-
-  function setAuthMode(mode) {
-    authMode = mode;
-    tabLogin.classList.toggle('active', mode === 'login');
-    tabSignup.classList.toggle('active', mode === 'signup');
-    authSubmit.textContent = mode === 'login' ? 'Sign in' : 'Create account';
-    authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
-
-    if (mode === 'login') {
-      authEmailLabel.textContent = 'Username or email';
-      authEmail.autocomplete = 'username';
-      authEmail.placeholder = '';
-      usernameField.style.display = 'none';
-      authUsername.required = false;
-      authUsername.value = '';
-    } else {
-      authEmailLabel.textContent = 'Email';
-      authEmail.autocomplete = 'email';
-      usernameField.style.display = '';
-      authUsername.required = true;
-    }
-
-    authError.textContent = '';
-  }
-
-  // Error responses come in a few different shapes depending on the endpoint:
-  //  - plain string (most HTTPException(status, "message") calls)
-  //  - { message, email } (the unverified-login 403 case)
-  //  - an array of Pydantic validation errors (422s, e.g. bad email format)
-  // This normalizes all three into a single displayable string.
-  function formatAuthError(data) {
-    const detail = data?.detail;
-    if (!detail) return 'Something went wrong.';
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail)) {
-      return detail.map(err => err.msg || 'Invalid input').join(' ');
-    }
-    if (typeof detail === 'object' && detail.message) return detail.message;
-    return 'Something went wrong.';
-  }
-
-  function showVerifyScreen(email, hintMsg, password) {
-    pendingVerifyEmail = email;
-    pendingVerifyPassword = password || null;
-    authPanel.classList.remove('visible');
-    forgotPanel.classList.remove('visible');
-    verifyPanel.classList.add('visible');
-    verifyError.textContent = '';
-    verifyCode.value = '';
-    verifyHint.textContent = hintMsg || `Enter the 6-digit code we emailed to ${email}.`;
-    startVerifyPolling();
-  }
-
-  function startVerifyPolling() {
-    stopVerifyPolling();
-    verifyPollTimer = setInterval(checkVerifyStatus, 3000);
-  }
-
-  function stopVerifyPolling() {
-    if (verifyPollTimer) {
-      clearInterval(verifyPollTimer);
-      verifyPollTimer = null;
-    }
-  }
-
-  async function checkVerifyStatus() {
-    if (!pendingVerifyEmail) return;
-    try {
-      const res = await fetch(`${API_BASE}/api/verify-status?email=${encodeURIComponent(pendingVerifyEmail)}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.verified) {
-        await completeAutoLogin();
+      if (currentView === 'players') {
+        playersContent.style.display = '';
+        loadPlayersList();
+      } else {
+        playersContent.style.display = 'none';
       }
-    } catch {
-      // transient network hiccup - just try again on the next tick
     }
-  }
 
-  async function completeAutoLogin() {
-    stopVerifyPolling();
-    const email = pendingVerifyEmail;
-    const password = pendingVerifyPassword;
-    pendingVerifyEmail = null;
-    pendingVerifyPassword = null;
+    function setNavView(view) {
+      currentView = view;
+      navLinkMe.classList.toggle('active', view === 'me');
+      navLinkPlayers.classList.toggle('active', view === 'players');
+      updateAppVisibility();
+    }
 
-    if (!password) {
-      // Page was reloaded, or user got here via the login-403 path on a
-      // different session - we don't have credentials cached, so just
-      // point them at sign-in instead of silently failing.
-      setAuthMode('login');
+    function setNavDropdownOpen(open) {
+      navDropdownOpen = open;
+      navDropdown.style.display = open ? 'block' : 'none';
+    }
+
+    navLinkMe.addEventListener('click', () => setNavView('me'));
+    navLinkPlayers.addEventListener('click', () => setNavView('players'));
+    navLoginBtn.addEventListener('click', () => setNavView('me'));
+
+    navAvatarContainer.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setNavDropdownOpen(!navDropdownOpen);
+    });
+    document.addEventListener('click', () => {
+      if (navDropdownOpen) setNavDropdownOpen(false);
+    });
+    navLogoutBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
       showLoggedOut();
-      authEmail.value = email || '';
-      authError.textContent = 'Email verified! Please sign in.';
-      return;
+    });
+
+
+    // SHARED APP-CONTENT REFS — used across upload, frame-editing, and save
+    // (these three flows all operate on the same "result" panel, so their
+    // DOM refs live together rather than being split three ways)
+    const appContent = document.getElementById('app-content');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('result');
+    const playerRowsEl = document.getElementById('player-rows');
+    const resultThumb = document.getElementById('result-thumb');
+    const thumbZoomWrap = document.getElementById('thumb-zoom-wrap');
+    const historyList = document.getElementById('history-list');
+    const saveBtn = document.getElementById('save-btn');
+    const discardBtn = document.getElementById('discard-btn');
+    const saveError = document.getElementById('save-error');
+    const editedDateTimeInput = document.getElementById('edited-datetime');
+
+
+    // THUMBNAIL ZOOM/PAN — lets the user inspect scoreboard detail without
+    // changing the fixed-size preview box. Click zooms in centered on the
+    // click point (click again, or drag, to interact further); scroll wheel
+    // zooms centered on the cursor; drag pans once zoomed. Resets to 1x
+    // whenever a new image is loaded into #result-thumb.
+    //
+    // Math note: the image transform uses transform-origin: 0 0 (top-left),
+    // so all cursor/click coordinates below are measured relative to the
+    // wrap's top-left corner (NOT its center), and the pan clamp is the
+    // asymmetric range [wrapSize * (1 - scale), 0] rather than a symmetric
+    // +/- range - that's what keeps the image's actual edges reachable.
+    const ZOOM_MIN = 1;
+    const ZOOM_MAX = 4;
+    const ZOOM_CLICK_SCALE = 2;
+    const DRAG_THRESHOLD_PX = 4;
+
+    let thumbScale = 1;
+    let thumbX = 0;
+    let thumbY = 0;
+    let thumbDragging = false;
+    let thumbDragStartX = 0;
+    let thumbDragStartY = 0;
+    let thumbDragOriginX = 0;
+    let thumbDragOriginY = 0;
+    let thumbMouseDownPos = null;
+    let thumbDragMoved = false;
+
+    function applyThumbTransform() {
+      resultThumb.style.transform = `translate(${thumbX}px, ${thumbY}px) scale(${thumbScale})`;
+      thumbZoomWrap.classList.toggle('zoomed', thumbScale > 1);
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ identifier: email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
+    function clampThumbPan() {
+      const wrapRect = thumbZoomWrap.getBoundingClientRect();
+      const minX = wrapRect.width * (1 - thumbScale);
+      const minY = wrapRect.height * (1 - thumbScale);
+      thumbX = Math.min(0, Math.max(minX, thumbX));
+      thumbY = Math.min(0, Math.max(minY, thumbY));
+    }
+
+    function resetThumbZoom() {
+      thumbScale = 1;
+      thumbX = 0;
+      thumbY = 0;
+      applyThumbTransform();
+    }
+
+    // Keeps (cursorX, cursorY) - measured relative to the wrap's top-left -
+    // visually fixed in place while scale changes from thumbScale to newScale.
+    function zoomTowardPoint(cursorX, cursorY, newScale) {
+      const prevScale = thumbScale;
+      const scaleRatio = newScale / prevScale;
+      thumbX = cursorX - scaleRatio * (cursorX - thumbX);
+      thumbY = cursorY - scaleRatio * (cursorY - thumbY);
+      thumbScale = newScale;
+
+      if (thumbScale === ZOOM_MIN) {
+        thumbX = 0;
+        thumbY = 0;
+      } else {
+        clampThumbPan();
+      }
+      applyThumbTransform();
+    }
+
+    thumbZoomWrap.addEventListener('wheel', (e) => {
+      if (!resultThumb.getAttribute('src')) return;
+      e.preventDefault();
+
+      const wrapRect = thumbZoomWrap.getBoundingClientRect();
+      const cursorX = e.clientX - wrapRect.left;
+      const cursorY = e.clientY - wrapRect.top;
+
+      const delta = -e.deltaY * 0.0015;
+      const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, thumbScale + delta * thumbScale));
+      zoomTowardPoint(cursorX, cursorY, newScale);
+    }, { passive: false });
+
+    thumbZoomWrap.addEventListener('mousedown', (e) => {
+      if (!resultThumb.getAttribute('src')) return;
+      thumbMouseDownPos = { x: e.clientX, y: e.clientY };
+      thumbDragMoved = false;
+
+      if (thumbScale > 1) {
+        thumbDragging = true;
+        thumbZoomWrap.classList.add('dragging');
+        thumbDragStartX = e.clientX;
+        thumbDragStartY = e.clientY;
+        thumbDragOriginX = thumbX;
+        thumbDragOriginY = thumbY;
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (thumbMouseDownPos) {
+        const dx = e.clientX - thumbMouseDownPos.x;
+        const dy = e.clientY - thumbMouseDownPos.y;
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) thumbDragMoved = true;
+      }
+
+      if (!thumbDragging) return;
+      thumbX = thumbDragOriginX + (e.clientX - thumbDragStartX);
+      thumbY = thumbDragOriginY + (e.clientY - thumbDragStartY);
+      clampThumbPan();
+      applyThumbTransform();
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (thumbDragging) {
+        thumbDragging = false;
+        thumbZoomWrap.classList.remove('dragging');
+      }
+
+      // A "click" is a mousedown+mouseup with no meaningful movement between
+      // them - toggle zoom in that case. A real drag (pan) doesn't also toggle.
+      if (thumbMouseDownPos && !thumbDragMoved && resultThumb.getAttribute('src')) {
+        const wrapRect = thumbZoomWrap.getBoundingClientRect();
+        const clickX = e.clientX - wrapRect.left;
+        const clickY = e.clientY - wrapRect.top;
+
+        if (thumbScale > 1) {
+          resetThumbZoom();
+        } else {
+          zoomTowardPoint(clickX, clickY, ZOOM_CLICK_SCALE);
+        }
+      }
+
+      thumbMouseDownPos = null;
+    });
+
+
+    // AUTH — sign in / sign up / email verification / forgot password
+
+    // DOM refs used by: setAuthMode, showVerifyScreen/showForgotScreen,
+    // showLoggedIn/showLoggedOut, and the form listeners below.
+    const authPanel = document.getElementById('auth-panel');
+    const tabLogin = document.getElementById('tab-login');
+    const tabSignup = document.getElementById('tab-signup');
+    const authForm = document.getElementById('auth-form');
+    const authEmail = document.getElementById('auth-email');
+    const authEmailLabel = document.getElementById('auth-email-label');
+    const authUsername = document.getElementById('auth-username');
+    const usernameField = document.getElementById('username-field');
+    const authPassword = document.getElementById('auth-password');
+    const authSubmit = document.getElementById('auth-submit');
+    const authError = document.getElementById('auth-error');
+    const forgotPasswordBtn = document.getElementById('forgot-password-btn');
+
+    const verifyPanel = document.getElementById('verify-panel');
+    const verifyForm = document.getElementById('verify-form');
+    const verifyCode = document.getElementById('verify-code');
+    const verifySubmit = document.getElementById('verify-submit');
+    const verifyError = document.getElementById('verify-error');
+    const verifyHint = document.getElementById('verify-hint');
+    const resendCodeBtn = document.getElementById('resend-code-btn');
+    const verifyBackBtn = document.getElementById('verify-back-btn');
+
+    const forgotPanel = document.getElementById('forgot-panel');
+    const forgotRequestForm = document.getElementById('forgot-request-form');
+    const forgotEmail = document.getElementById('forgot-email');
+    const forgotRequestSubmit = document.getElementById('forgot-request-submit');
+    const forgotRequestError = document.getElementById('forgot-request-error');
+    const forgotResetForm = document.getElementById('forgot-reset-form');
+    const resetCode = document.getElementById('reset-code');
+    const resetNewPassword = document.getElementById('reset-new-password');
+    const forgotResetSubmit = document.getElementById('forgot-reset-submit');
+    const forgotResetError = document.getElementById('forgot-reset-error');
+    const forgotBackBtn = document.getElementById('forgot-back-btn');
+
+    let authMode = 'login';
+    let pendingVerifyEmail = null;
+    let pendingResetEmail = null;
+    let pendingVerifyPassword = null;
+    let verifyPollTimer = null;
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      tabLogin.classList.toggle('active', mode === 'login');
+      tabSignup.classList.toggle('active', mode === 'signup');
+      authSubmit.textContent = mode === 'login' ? 'Sign in' : 'Create account';
+      authPassword.autocomplete = mode === 'login' ? 'current-password' : 'new-password';
+
+      if (mode === 'login') {
+        authEmailLabel.textContent = 'Username or email';
+        authEmail.autocomplete = 'username';
+        authEmail.placeholder = '';
+        usernameField.style.display = 'none';
+        authUsername.required = false;
+        authUsername.value = '';
+      } else {
+        authEmailLabel.textContent = 'Email';
+        authEmail.autocomplete = 'email';
+        usernameField.style.display = '';
+        authUsername.required = true;
+      }
+
+      authError.textContent = '';
+    }
+
+    // Error responses come in a few different shapes depending on the endpoint:
+    //  - plain string (most HTTPException(status, "message") calls)
+    //  - { message, email } (the unverified-login 403 case)
+    //  - an array of Pydantic validation errors (422s, e.g. bad email format)
+    // This normalizes all three into a single displayable string.
+    function formatAuthError(data) {
+      const detail = data?.detail;
+      if (!detail) return 'Something went wrong.';
+      if (typeof detail === 'string') return detail;
+      if (Array.isArray(detail)) {
+        return detail.map(err => err.msg || 'Invalid input').join(' ');
+      }
+      if (typeof detail === 'object' && detail.message) return detail.message;
+      return 'Something went wrong.';
+    }
+
+    function showVerifyScreen(email, hintMsg, password) {
+      pendingVerifyEmail = email;
+      pendingVerifyPassword = password || null;
+      authPanel.classList.remove('visible');
+      forgotPanel.classList.remove('visible');
+      verifyPanel.classList.add('visible');
+      verifyError.textContent = '';
+      verifyCode.value = '';
+      verifyHint.textContent = hintMsg || `Enter the 6-digit code we emailed to ${email}.`;
+      startVerifyPolling();
+    }
+
+    function startVerifyPolling() {
+      stopVerifyPolling();
+      verifyPollTimer = setInterval(checkVerifyStatus, 3000);
+    }
+
+    function stopVerifyPolling() {
+      if (verifyPollTimer) {
+        clearInterval(verifyPollTimer);
+        verifyPollTimer = null;
+      }
+    }
+
+    async function checkVerifyStatus() {
+      if (!pendingVerifyEmail) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/verify-status?email=${encodeURIComponent(pendingVerifyEmail)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.verified) {
+          await completeAutoLogin();
+        }
+      } catch {
+        // transient network hiccup - just try again on the next tick
+      }
+    }
+
+    async function completeAutoLogin() {
+      stopVerifyPolling();
+      const email = pendingVerifyEmail;
+      const password = pendingVerifyPassword;
+      pendingVerifyEmail = null;
+      pendingVerifyPassword = null;
+
+      if (!password) {
+        // Page was reloaded, or user got here via the login-403 path on a
+        // different session - we don't have credentials cached, so just
+        // point them at sign-in instead of silently failing.
+        setAuthMode('login');
+        showLoggedOut();
+        authEmail.value = email || '';
+        authError.textContent = 'Email verified! Please sign in.';
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/api/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ identifier: email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setAuthMode('login');
+          showLoggedOut();
+          authEmail.value = email;
+          authError.textContent = 'Email verified! Please sign in.';
+          return;
+        }
+        showLoggedIn(data);
+      } catch {
         setAuthMode('login');
         showLoggedOut();
         authEmail.value = email;
         authError.textContent = 'Email verified! Please sign in.';
-        return;
       }
-      showLoggedIn(data);
-    } catch {
-      setAuthMode('login');
-      showLoggedOut();
-      authEmail.value = email;
-      authError.textContent = 'Email verified! Please sign in.';
     }
-  }
 
-  function showForgotScreen() {
-    authPanel.classList.remove('visible');
-    verifyPanel.classList.remove('visible');
-    forgotPanel.classList.add('visible');
-    forgotRequestForm.style.display = '';
-    forgotResetForm.style.display = 'none';
-    forgotRequestError.textContent = '';
-    forgotResetError.textContent = '';
-    forgotEmail.value = '';
-    resetCode.value = '';
-    resetNewPassword.value = '';
-  }
+    function showForgotScreen() {
+      authPanel.classList.remove('visible');
+      verifyPanel.classList.remove('visible');
+      forgotPanel.classList.add('visible');
+      forgotRequestForm.style.display = '';
+      forgotResetForm.style.display = 'none';
+      forgotRequestError.textContent = '';
+      forgotResetError.textContent = '';
+      forgotEmail.value = '';
+      resetCode.value = '';
+      resetNewPassword.value = '';
+    }
 
-  function showLoggedIn(user) {
-    stopVerifyPolling();
-    isLoggedIn = true;
-    navAvatarContainer.style.display = 'block';
-    navLoginTrigger.style.display = 'none';
-    navAvatar.textContent = (user.email || '?').charAt(0).toUpperCase();
-    navDropdownEmail.textContent = user.email;
-    setNavDropdownOpen(false);
-    verifyPanel.classList.remove('visible');
-    forgotPanel.classList.remove('visible');
-    loadHistory();
-    updateAppVisibility();
-  }
+    function showLoggedIn(user) {
+      stopVerifyPolling();
+      isLoggedIn = true;
+      navAvatarContainer.style.display = 'block';
+      navLoginTrigger.style.display = 'none';
+      navAvatar.textContent = (user.email || '?').charAt(0).toUpperCase();
+      navDropdownEmail.textContent = user.email;
+      setNavDropdownOpen(false);
+      verifyPanel.classList.remove('visible');
+      forgotPanel.classList.remove('visible');
+      loadHistory();
+      updateAppVisibility();
+    }
 
-  function showLoggedOut() {
-    stopVerifyPolling();
-    isLoggedIn = false;
-    uploadQueue = [];
-    queueIndex = 0;
-    queueSuspendedForEdit = false;
-    navAvatarContainer.style.display = 'none';
-    navLoginTrigger.style.display = 'block';
-    setNavDropdownOpen(false);
-    verifyPanel.classList.remove('visible');
-    forgotPanel.classList.remove('visible');
-    updateAppVisibility();
-  }
+    function showLoggedOut() {
+      stopVerifyPolling();
+      isLoggedIn = false;
+      uploadQueue = [];
+      queueIndex = 0;
+      queueSuspendedForEdit = false;
+      navAvatarContainer.style.display = 'none';
+      navLoginTrigger.style.display = 'block';
+      setNavDropdownOpen(false);
+      verifyPanel.classList.remove('visible');
+      forgotPanel.classList.remove('visible');
+      updateAppVisibility();
+    }
 
-  tabLogin.addEventListener('click', () => setAuthMode('login'));
-  tabSignup.addEventListener('click', () => setAuthMode('signup'));
+    tabLogin.addEventListener('click', () => setAuthMode('login'));
+    tabSignup.addEventListener('click', () => setAuthMode('signup'));
 
-  authForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    authError.textContent = '';
-    authSubmit.disabled = true;
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      authError.textContent = '';
+      authSubmit.disabled = true;
 
-    const endpoint = authMode === 'login' ? `${API_BASE}/api/login` : `${API_BASE}/api/signup`;
-    const submittedIdentifier = authEmail.value; // email field doubles as "username or email" in login mode
-    const submittedUsername = authUsername.value.trim();
-    const submittedPassword = authPassword.value;
+      const endpoint = authMode === 'login' ? `${API_BASE}/api/login` : `${API_BASE}/api/signup`;
+      const submittedIdentifier = authEmail.value; // email field doubles as "username or email" in login mode
+      const submittedUsername = authUsername.value.trim();
+      const submittedPassword = authPassword.value;
 
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(
-          authMode === 'login'
-            ? { identifier: submittedIdentifier, password: submittedPassword }
-            : { email: submittedIdentifier, username: submittedUsername, password: submittedPassword }
-        ),
-      });
-      const data = await res.json();
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(
+            authMode === 'login'
+              ? { identifier: submittedIdentifier, password: submittedPassword }
+              : { email: submittedIdentifier, username: submittedUsername, password: submittedPassword }
+          ),
+        });
+        const data = await res.json();
 
-      if (!res.ok) {
-        if (res.status === 403 && authMode === 'login') {
-          // Account exists but email isn't verified yet.
-          // data.detail is now an object: { message, email }
-          const verifyEmail = data.detail?.email || submittedIdentifier;
-          authPassword.value = '';
-          showVerifyScreen(verifyEmail, undefined, submittedPassword);
+        if (!res.ok) {
+          if (res.status === 403 && authMode === 'login') {
+            // Account exists but email isn't verified yet.
+            // data.detail is now an object: { message, email }
+            const verifyEmail = data.detail?.email || submittedIdentifier;
+            authPassword.value = '';
+            showVerifyScreen(verifyEmail, undefined, submittedPassword);
+            return;
+          }
+          authError.textContent = formatAuthError(data);
           return;
         }
-        authError.textContent = formatAuthError(data);
-        return;
+
+        authPassword.value = '';
+
+        if (authMode === 'signup') {
+          showVerifyScreen(submittedIdentifier, 'Account created! Enter the 6-digit code we emailed you to finish signing up.', submittedPassword);
+          return;
+        }
+
+        showLoggedIn(data);
+      } catch {
+        authError.textContent = 'Could not reach the server.';
+      } finally {
+        authSubmit.disabled = false;
       }
+    });
 
-      authPassword.value = '';
+    verifyForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!pendingVerifyEmail) return;
+      verifyError.textContent = '';
+      verifySubmit.disabled = true;
 
-      if (authMode === 'signup') {
-        showVerifyScreen(submittedIdentifier, 'Account created! Enter the 6-digit code we emailed you to finish signing up.', submittedPassword);
-        return;
+      try {
+        const res = await fetch(`${API_BASE}/api/verify-email`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: pendingVerifyEmail, code: verifyCode.value }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          verifyError.textContent = formatAuthError(data);
+          return;
+        }
+
+        pendingVerifyEmail = null;
+        pendingVerifyPassword = null;
+        stopVerifyPolling();
+        showLoggedIn(data); // verify-email also sets the session cookie
+      } catch {
+        verifyError.textContent = 'Could not reach the server.';
+      } finally {
+        verifySubmit.disabled = false;
       }
+    });
 
-      showLoggedIn(data);
-    } catch {
-      authError.textContent = 'Could not reach the server.';
-    } finally {
-      authSubmit.disabled = false;
-    }
-  });
+    resendCodeBtn.addEventListener('click', async () => {
+      if (!pendingVerifyEmail) return;
+      verifyError.textContent = '';
+      resendCodeBtn.disabled = true;
 
-  verifyForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!pendingVerifyEmail) return;
-    verifyError.textContent = '';
-    verifySubmit.disabled = true;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/verify-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: pendingVerifyEmail, code: verifyCode.value }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        verifyError.textContent = formatAuthError(data);
-        return;
+      try {
+        await fetch(`${API_BASE}/api/resend-verification`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: pendingVerifyEmail }),
+        });
+        verifyHint.textContent = `Code resent to ${pendingVerifyEmail}.`;
+      } catch {
+        verifyError.textContent = 'Could not reach the server.';
+      } finally {
+        resendCodeBtn.disabled = false;
       }
+    });
 
+    verifyBackBtn.addEventListener('click', () => {
       pendingVerifyEmail = null;
       pendingVerifyPassword = null;
       stopVerifyPolling();
-      showLoggedIn(data); // verify-email also sets the session cookie
-    } catch {
-      verifyError.textContent = 'Could not reach the server.';
-    } finally {
-      verifySubmit.disabled = false;
-    }
-  });
+      setAuthMode('login');
+      showLoggedOut();
+    });
 
-  resendCodeBtn.addEventListener('click', async () => {
-    if (!pendingVerifyEmail) return;
-    verifyError.textContent = '';
-    resendCodeBtn.disabled = true;
+    forgotPasswordBtn.addEventListener('click', () => {
+      showForgotScreen();
+    });
 
-    try {
-      await fetch(`${API_BASE}/api/resend-verification`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: pendingVerifyEmail }),
-      });
-      verifyHint.textContent = `Code resent to ${pendingVerifyEmail}.`;
-    } catch {
-      verifyError.textContent = 'Could not reach the server.';
-    } finally {
-      resendCodeBtn.disabled = false;
-    }
-  });
+    forgotRequestForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      forgotRequestError.textContent = '';
+      forgotRequestSubmit.disabled = true;
 
-  verifyBackBtn.addEventListener('click', () => {
-    pendingVerifyEmail = null;
-    pendingVerifyPassword = null;
-    stopVerifyPolling();
-    setAuthMode('login');
-    showLoggedOut();
-  });
+      const submittedEmail = forgotEmail.value;
 
-  forgotPasswordBtn.addEventListener('click', () => {
-    showForgotScreen();
-  });
-
-  forgotRequestForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    forgotRequestError.textContent = '';
-    forgotRequestSubmit.disabled = true;
-
-    const submittedEmail = forgotEmail.value;
-
-    try {
-      await fetch(`${API_BASE}/api/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ email: submittedEmail }),
-      });
-      pendingResetEmail = submittedEmail;
-      forgotRequestForm.style.display = 'none';
-      forgotResetForm.style.display = '';
-    } catch {
-      forgotRequestError.textContent = 'Could not reach the server.';
-    } finally {
-      forgotRequestSubmit.disabled = false;
-    }
-  });
-
-  forgotResetForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    if (!pendingResetEmail) return;
-    forgotResetError.textContent = '';
-    forgotResetSubmit.disabled = true;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: pendingResetEmail,
-          code: resetCode.value,
-          password: resetNewPassword.value,
-        }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        forgotResetError.textContent = formatAuthError(data) !== 'Something went wrong.' ? formatAuthError(data) : 'Invalid reset code.';
-        return;
+      try {
+        await fetch(`${API_BASE}/api/forgot-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: submittedEmail }),
+        });
+        pendingResetEmail = submittedEmail;
+        forgotRequestForm.style.display = 'none';
+        forgotResetForm.style.display = '';
+      } catch {
+        forgotRequestError.textContent = 'Could not reach the server.';
+      } finally {
+        forgotRequestSubmit.disabled = false;
       }
+    });
 
+    forgotResetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!pendingResetEmail) return;
+      forgotResetError.textContent = '';
+      forgotResetSubmit.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/reset-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: pendingResetEmail,
+            code: resetCode.value,
+            password: resetNewPassword.value,
+          }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          forgotResetError.textContent = formatAuthError(data) !== 'Something went wrong.' ? formatAuthError(data) : 'Invalid reset code.';
+          return;
+        }
+
+        pendingResetEmail = null;
+        setAuthMode('login');
+        showLoggedOut();
+        authError.textContent = 'Password updated. Please sign in.';
+      } catch {
+        forgotResetError.textContent = 'Could not reach the server.';
+      } finally {
+        forgotResetSubmit.disabled = false;
+      }
+    });
+
+    forgotBackBtn.addEventListener('click', () => {
       pendingResetEmail = null;
       setAuthMode('login');
       showLoggedOut();
-      authError.textContent = 'Password updated. Please sign in.';
-    } catch {
-      forgotResetError.textContent = 'Could not reach the server.';
-    } finally {
-      forgotResetSubmit.disabled = false;
-    }
-  });
+    });
 
-  forgotBackBtn.addEventListener('click', () => {
-    pendingResetEmail = null;
-    setAuthMode('login');
-    showLoggedOut();
-  });
-
-  async function checkSession() {
-    try {
-      const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
-      const user = await res.json();
-      if (user) {
-        showLoggedIn(user);
-        setNavView('me');
-      } else {
+    async function checkSession() {
+      try {
+        const res = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
+        const user = await res.json();
+        if (user) {
+          showLoggedIn(user);
+          setNavView('me');
+        } else {
+          showLoggedOut();
+          setNavView('players');
+        }
+      } catch {
         showLoggedOut();
-        setNavView('players');
       }
-    } catch {
-      showLoggedOut();
     }
-  }
 
 
-  // UPLOAD QUEUE — drag/drop + file picker, OCR requests, concurrency pool
+    // UPLOAD QUEUE — drag/drop + file picker, OCR requests, concurrency pool
 
-  // Each entry: { file, promise, result, error }
-  // - promise resolves to the parsed /api/upload response (or rejects on failure)
-  // - result/error get filled in once the promise settles, so showQueueItem()
-  //   doesn't need to re-await something that already finished
-  let uploadQueue = [];
-  let queueIndex = 0;
-  let queueSuspendedForEdit = false;
-  let queueRequestToken = 0;
+    // Each entry: { file, promise, result, error }
+    // - promise resolves to the parsed /api/upload response (or rejects on failure)
+    // - result/error get filled in once the promise settles, so showQueueItem()
+    //   doesn't need to re-await something that already finished
+    let uploadQueue = [];
+    let queueIndex = 0;
+    let queueSuspendedForEdit = false;
+    let queueRequestToken = 0;
 
-  // ---- upload concurrency pool ----
-  // Uploads are launched from a self-refilling pool, not tied to how fast
-  // the user reviews/saves/discards. The moment a request comes back
-  // (success or failure), the next unstarted file is launched immediately.
-  let activeUploadCount = 0;
-  let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
+    // ---- upload concurrency pool ----
+    // Uploads are launched from a self-refilling pool, not tied to how fast
+    // the user reviews/saves/discards. The moment a request comes back
+    // (success or failure), the next unstarted file is launched immediately.
+    let activeUploadCount = 0;
+    let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
 
-  let pendingUpload = null;
-  let pendingEdit = null; // { gameId }
-  let pendingRetry = null; // { index } - set when the currently-shown queue item failed
+    let pendingUpload = null;
+    let pendingEdit = null; // { gameId }
+    let pendingRetry = null; // { index } - set when the currently-shown queue item failed
 
-  function kickOffUpload(entry) {
-    activeUploadCount++;
+    function kickOffUpload(entry) {
+      activeUploadCount++;
 
-    const formData = new FormData();
-    formData.append('file', entry.file);
-    formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
+      const formData = new FormData();
+      formData.append('file', entry.file);
+      formData.append('auto_crop', document.getElementById('auto-crop-toggle')?.checked ?? true);
 
-    entry.promise = fetch(`${API_BASE}/api/upload`, {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
-        entry.result = data;
-        return data;
+      entry.promise = fetch(`${API_BASE}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
       })
-      .catch((err) => {
-        entry.error = err.message || 'Upload failed';
-        throw err;
-      })
-      .finally(() => {
-        activeUploadCount--;
-        pumpUploadQueue(); // this slot is free — launch the next unstarted file
-      });
-  }
-
-  // Keeps up to MAX_CONCURRENT_UPLOADS in flight at all times, launching a
-  // new file the moment a slot opens up — not tied to save/discard/review speed.
-  function pumpUploadQueue() {
-    while (activeUploadCount < MAX_CONCURRENT_UPLOADS && nextUploadToLaunch < uploadQueue.length) {
-      kickOffUpload(uploadQueue[nextUploadToLaunch]);
-      nextUploadToLaunch++;
-    }
-  }
-
-  function startUploadQueue(files) {
-    const queueActive = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
-
-    if (!queueActive) {
-      // No queue running — start fresh, same as before.
-      resetResultPanel();
-      uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
-      queueIndex = 0;
-      nextUploadToLaunch = 0;
-      activeUploadCount = 0;
-      pumpUploadQueue();
-      showQueueItem(0);
-      return;
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Upload failed');
+          entry.result = data;
+          return data;
+        })
+        .catch((err) => {
+          entry.error = err.message || 'Upload failed';
+          throw err;
+        })
+        .finally(() => {
+          activeUploadCount--;
+          pumpUploadQueue(); // this slot is free — launch the next unstarted file
+        });
     }
 
-    // A queue is already processing — append instead of clobbering it.
-    const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
-    uploadQueue.push(...newEntries);
-    pumpUploadQueue(); // picks up the new entries once a slot frees up
-    if (!queueSuspendedForEdit) {
+    // Keeps up to MAX_CONCURRENT_UPLOADS in flight at all times, launching a
+    // new file the moment a slot opens up — not tied to save/discard/review speed.
+    function pumpUploadQueue() {
+      while (activeUploadCount < MAX_CONCURRENT_UPLOADS && nextUploadToLaunch < uploadQueue.length) {
+        kickOffUpload(uploadQueue[nextUploadToLaunch]);
+        nextUploadToLaunch++;
+      }
+    }
+
+    function startUploadQueue(files) {
+      const queueActive = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
+
+      if (!queueActive) {
+        // No queue running — start fresh, same as before.
+        resetResultPanel();
+        uploadQueue = files.map(file => ({ file, promise: null, result: null, error: null }));
+        queueIndex = 0;
+        nextUploadToLaunch = 0;
+        activeUploadCount = 0;
+        pumpUploadQueue();
+        showQueueItem(0);
+        return;
+      }
+
+      // A queue is already processing — append instead of clobbering it.
+      const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
+      uploadQueue.push(...newEntries);
+      pumpUploadQueue(); // picks up the new entries once a slot frees up
+      if (!queueSuspendedForEdit) {
+        document.getElementById('queue-progress').textContent =
+          `Photo ${queueIndex + 1}/${uploadQueue.length}`;
+      }
+    }
+
+    async function showQueueItem(index) {
+      if (index >= uploadQueue.length) {
+        document.getElementById('queue-progress').textContent = '';
+        resultEl.classList.remove('visible');
+        setStatus('All photos processed.');
+        uploadQueue = [];
+        queueIndex = 0;
+        loadHistory();
+        return;
+      }
+
+      queueIndex = index;
+      const token = ++queueRequestToken;
+      const entry = uploadQueue[index];
       document.getElementById('queue-progress').textContent =
-        `Photo ${queueIndex + 1}/${uploadQueue.length}`;
-    }
-  }
+        `Photo ${index + 1}/${uploadQueue.length}`;
 
-  async function showQueueItem(index) {
-    if (index >= uploadQueue.length) {
-      document.getElementById('queue-progress').textContent = '';
-      resultEl.classList.remove('visible');
-      setStatus('All photos processed.');
-      uploadQueue = [];
-      queueIndex = 0;
-      loadHistory();
-      return;
-    }
-
-    queueIndex = index;
-    const token = ++queueRequestToken;
-    const entry = uploadQueue[index];
-    document.getElementById('queue-progress').textContent =
-      `Photo ${index + 1}/${uploadQueue.length}`;
-
-    pendingUpload = null;
-    pendingEdit = null;              // resuming the queue always ends any pending edit
-    pendingRetry = null;             // clear any stale retry state from a previous failed item
-    players = [];
-    playerRowsEl.innerHTML = '';
-    playerRowsEl.classList.remove('hide-checkboxes'); // make sure checkboxes come back for multi-player queue items
-    saveBtn.textContent = 'Save game';   // undo "Save changes" label left over from editing
-    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
-      URL.revokeObjectURL(resultThumb.src);
-    }
-    resultThumb.removeAttribute('src');
-    saveBtn.disabled = true;
-    discardBtn.disabled = true;
-    resultEl.classList.add('visible');
-
-    setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
-
-    try {
-      // entry.promise should already be in flight (or settled) thanks to
-      // pumpUploadQueue; kick it off directly only as a defensive fallback.
-      const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
-      if (token !== queueRequestToken) return; // superseded by a newer call
-
-      setStatus('');
-      pendingUpload = { imageKey: '' };
-      players = data.players.map(p => {
-        const parsed = parseAnnotatedFrameString(p.frame_string);
-        return {
-          name: p.name || '',
-          rollSymbols: parsed.rollSymbols,
-          pendingCursor: null,
-          selected: true,
-          splitFrames: parsed.splitFrames,
-        };
-      });
-      playerRowsEl.classList.remove('hide-checkboxes');
-      editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
-      renderEditableFrames();
-
+      pendingUpload = null;
+      pendingEdit = null;              // resuming the queue always ends any pending edit
+      pendingRetry = null;             // clear any stale retry state from a previous failed item
+      players = [];
+      playerRowsEl.innerHTML = '';
+      playerRowsEl.classList.remove('hide-checkboxes'); // make sure checkboxes come back for multi-player queue items
+      saveBtn.textContent = 'Save game';   // undo "Save changes" label left over from editing
       if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
       }
-      resultThumb.src = data.preview_image.startsWith('data:')
-        ? dataUrlToBlobUrl(data.preview_image)
-        : data.preview_image;
-      resultEl.classList.add('visible');
-    } catch {
-      if (token !== queueRequestToken) return;
-      setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
-      playerRowsEl.innerHTML = '';
       resultThumb.removeAttribute('src');
-      players = [];
-      pendingUpload = null;
-      pendingRetry = { index };      // let the user retry this specific queue slot
-      saveBtn.textContent = 'Retry';
+      resetThumbZoom();
+      saveBtn.disabled = true;
+      discardBtn.disabled = true;
       resultEl.classList.add('visible');
-    } finally {
-      if (token === queueRequestToken) {
-        saveBtn.disabled = false;
-        discardBtn.disabled = false;
+
+      setStatus(entry.result || entry.error ? '' : 'Reading scoreboard…');
+
+      try {
+        // entry.promise should already be in flight (or settled) thanks to
+        // pumpUploadQueue; kick it off directly only as a defensive fallback.
+        const data = entry.promise ? await entry.promise : (kickOffUpload(entry), await entry.promise);
+        if (token !== queueRequestToken) return; // superseded by a newer call
+
+        setStatus('');
+        pendingUpload = { imageKey: '' };
+        players = data.players.map(p => {
+          const parsed = parseAnnotatedFrameString(p.frame_string);
+          return {
+            name: p.name || '',
+            rollSymbols: parsed.rollSymbols,
+            pendingCursor: null,
+            selected: true,
+            splitFrames: parsed.splitFrames,
+          };
+        });
+        playerRowsEl.classList.remove('hide-checkboxes');
+        editedDateTimeInput.value = formatDateTimeInput(data.capture_date || new Date().toISOString());
+        renderEditableFrames();
+
+        if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+          URL.revokeObjectURL(resultThumb.src);
+        }
+        resultThumb.src = data.preview_image.startsWith('data:')
+          ? dataUrlToBlobUrl(data.preview_image)
+          : data.preview_image;
+        resultEl.classList.add('visible');
+      } catch {
+        if (token !== queueRequestToken) return;
+        setStatus(`Could not read photo ${index + 1}: ${entry.error}`, true);
+        playerRowsEl.innerHTML = '';
+        resultThumb.removeAttribute('src');
+        players = [];
+        pendingUpload = null;
+        pendingRetry = { index };      // let the user retry this specific queue slot
+        saveBtn.textContent = 'Retry';
+        resultEl.classList.add('visible');
+      } finally {
+        if (token === queueRequestToken) {
+          saveBtn.disabled = false;
+          discardBtn.disabled = false;
+        }
       }
     }
-  }
 
-  // Re-sends the failed file to the OCR endpoint by re-queuing it as a
-  // fresh entry (so it goes through the normal concurrency pool), then
-  // moves the UI forward to whatever's next, same as Discard would.
-  // The retried entry will get its own turn in showQueueItem() once the
-  // queue reaches it.
-  function retryCurrentUpload() {
-    if (!pendingRetry) return;
-    const { index } = pendingRetry;
-    const failedEntry = uploadQueue[index];
-    pendingRetry = null;
-    if (!failedEntry) return;
+    // Re-sends the failed file to the OCR endpoint by re-queuing it as a
+    // fresh entry (so it goes through the normal concurrency pool), then
+    // moves the UI forward to whatever's next, same as Discard would.
+    // The retried entry will get its own turn in showQueueItem() once the
+    // queue reaches it.
+    function retryCurrentUpload() {
+      if (!pendingRetry) return;
+      const { index } = pendingRetry;
+      const failedEntry = uploadQueue[index];
+      pendingRetry = null;
+      if (!failedEntry) return;
 
-    const retryEntry = { file: failedEntry.file, promise: null, result: null, error: null };
-    uploadQueue.push(retryEntry);
-    pumpUploadQueue(); // launches it once a slot is free, just like any queued upload
+      const retryEntry = { file: failedEntry.file, promise: null, result: null, error: null };
+      uploadQueue.push(retryEntry);
+      pumpUploadQueue(); // launches it once a slot is free, just like any queued upload
 
-    showQueueItem(queueIndex + 1);
-  }
+      showQueueItem(queueIndex + 1);
+    }
 
-  function dataUrlToBlobUrl(dataUrl) {
-    const [header, base64] = dataUrl.split(',');
-    const mime = header.match(/data:(.*?);base64/)[1];
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return URL.createObjectURL(new Blob([bytes], { type: mime }));
-  }
+    function dataUrlToBlobUrl(dataUrl) {
+      const [header, base64] = dataUrl.split(',');
+      const mime = header.match(/data:(.*?);base64/)[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    }
 
-  function setStatus(msg, isError = false) {
-    statusEl.textContent = msg;
-    statusEl.classList.toggle('error', isError);
-  }
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg;
+      statusEl.classList.toggle('error', isError);
+    }
 
-  ['dragover', 'dragenter'].forEach(evt =>
-    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
-  );
-  ['dragleave', 'drop'].forEach(evt =>
-    dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
-  );
-  dropzone.addEventListener('drop', e => {
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length) startUploadQueue(files);
-  });
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files.length) startUploadQueue(Array.from(fileInput.files));
-  });
+    ['dragover', 'dragenter'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.add('dragover'); })
+    );
+    ['dragleave', 'drop'].forEach(evt =>
+      dropzone.addEventListener(evt, e => { e.preventDefault(); dropzone.classList.remove('dragover'); })
+    );
+    dropzone.addEventListener('drop', e => {
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length) startUploadQueue(files);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length) startUploadQueue(Array.from(fileInput.files));
+    });
 
 
-  // FRAMES / SCORING — parsing roll symbols into bowling frames,
-  // rendering the editable frame boxes, and score calculation
+    // FRAMES / SCORING — parsing roll symbols into bowling frames,
+    // rendering the editable frame boxes, and score calculation
 
-  // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
-  // Single-player flows (editing a saved game) just use a 1-item array.
-  let players = [];
+    // Each entry: { name: string, rollSymbols: string[], pendingCursor: {global}|null, selected: boolean }
+    // Single-player flows (editing a saved game) just use a 1-item array.
+    let players = [];
 
-  // ------------------------------------------------------ frame grouping
-  // Mirrors parse_frames() in app/ocr.py exactly, plus one safety net: if
-  // more symbols exist than a legal 10-frame game can hold (shouldn't
-  // happen with real data, but can happen transiently while editing),
-  // extra symbols are grouped as additional 2-symbol frames instead of
-  // being silently dropped, so nothing the user typed disappears.
-  function parseFrames(symbols) {
-    const frames = [];
-    let i = 0;
+    // ------------------------------------------------------ frame grouping
+    // Mirrors parse_frames() in app/ocr.py exactly, plus one safety net: if
+    // more symbols exist than a legal 10-frame game can hold (shouldn't
+    // happen with real data, but can happen transiently while editing),
+    // extra symbols are grouped as additional 2-symbol frames instead of
+    // being silently dropped, so nothing the user typed disappears.
+    function parseFrames(symbols) {
+      const frames = [];
+      let i = 0;
 
-    for (let frameNum = 1; frameNum <= 10 || i < symbols.length; frameNum++) {
-      if (i >= symbols.length) break;
+      for (let frameNum = 1; frameNum <= 10 || i < symbols.length; frameNum++) {
+        if (i >= symbols.length) break;
 
-      let chunk;
-      if (frameNum < 10) {
-        if (symbols[i] === 'X') {
-          chunk = [symbols[i]];
+        let chunk;
+        if (frameNum < 10) {
+          if (symbols[i] === 'X') {
+            chunk = [symbols[i]];
+          } else {
+            chunk = symbols.slice(i, i + 2);
+          }
+        } else if (frameNum === 10) {
+          // Editing needs a stable box, not one that reclassifies mid-typing.
+          // Just take up to 3 remaining symbols — legality (strike/spare
+          // required for a 3rd roll) is validated server-side on save, not here.
+          chunk = symbols.slice(i, i + 3);
         } else {
+          // Overflow past frame 10 - not a real bowling frame, just a safety
+          // net so extra typed symbols stay visible instead of vanishing.
           chunk = symbols.slice(i, i + 2);
         }
-      } else if (frameNum === 10) {
-        // Editing needs a stable box, not one that reclassifies mid-typing.
-        // Just take up to 3 remaining symbols — legality (strike/spare
-        // required for a 3rd roll) is validated server-side on save, not here.
-        chunk = symbols.slice(i, i + 3);
-      } else {
-        // Overflow past frame 10 - not a real bowling frame, just a safety
-        // net so extra typed symbols stay visible instead of vanishing.
-        chunk = symbols.slice(i, i + 2);
+
+        i += chunk.length;
+        frames.push(chunk.join(''));
       }
 
-      i += chunk.length;
-      frames.push(chunk.join(''));
+      return frames;
     }
 
-    return frames;
-  }
+    function flattenFrameString(frameString) {
+      return frameString.replace(/\s+/g, '').split('');
+    }
 
-  function flattenFrameString(frameString) {
-    return frameString.replace(/\s+/g, '').split('');
-  }
+    // ------------------------------------------------- split-marker encoding
+    // Splits are a cosmetic annotation (first roll of a frame left a split,
+    // or for frame 10 specifically, first AND third roll each left one).
+    // They're encoded directly into the saved frame_string using a leading
+    // '*' immediately before the marked character, e.g. "*7/" or, for a
+    // frame 10 with two splits, "*X5*/". This keeps everything in the one
+    // string field the backend already stores, so it round-trips through
+    // save/edit/history without needing a schema change.
+    function annotateFrameWithSplits(frame, state) {
+      if (!state) return frame;
+      return frame
+        .split('')
+        .map((ch, i) => {
+          const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
+          return marked ? '*' + ch : ch;
+        })
+        .join('');
+    }
 
-  // ------------------------------------------------- split-marker encoding
-  // Splits are a cosmetic annotation (first roll of a frame left a split,
-  // or for frame 10 specifically, first AND third roll each left one).
-  // They're encoded directly into the saved frame_string using a leading
-  // '*' immediately before the marked character, e.g. "*7/" or, for a
-  // frame 10 with two splits, "*X5*/". This keeps everything in the one
-  // string field the backend already stores, so it round-trips through
-  // save/edit/history without needing a schema change.
-  function annotateFrameWithSplits(frame, state) {
-    if (!state) return frame;
-    return frame
-      .split('')
-      .map((ch, i) => {
+    // Inverse of the above: strips '*' markers out of a saved frame_string,
+    // returning both the clean roll symbols (for scoring/editing) and a
+    // { frameIndex: state } map describing which frames were marked.
+    function parseAnnotatedFrameString(frameString) {
+      const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
+      const rollSymbols = [];
+      const splitFrames = {};
+
+      frames.forEach((frame, idx) => {
+        const marks = [];
+        const chars = [];
+        for (let i = 0; i < frame.length; i++) {
+          if (frame[i] === '*') {
+            marks.push(chars.length);
+          } else {
+            chars.push(frame[i]);
+          }
+        }
+        if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
+          splitFrames[idx] = 2;
+        } else if (marks.length >= 1) {
+          splitFrames[idx] = 1;
+        }
+        rollSymbols.push(...chars);
+      });
+
+      return { rollSymbols, splitFrames };
+    }
+
+    // For display-only contexts (history list) where we just want to render
+    // marked characters in red without needing the parsed symbol array.
+    function stripSplitMarkers(str) {
+      return (str || '').replace(/\*/g, '');
+    }
+
+    // Shared per-character color rules for a roll symbol: split marks win
+    // (red), then strikes (cyan), then everything else (amber). Used by
+    // both the editable frame overlay and the read-only history list so
+    // the two stay in sync.
+    function rollCharStyle(ch, marked) {
+      if (marked) {
+        return { color: 'var(--danger)', shadow: '0 0 8px rgba(255, 93, 93, 0.4)' };
+      }
+      const isX = ch.toUpperCase() === 'X';
+      return isX
+        ? { color: 'var(--cyan)', shadow: '0 0 8px rgba(41, 230, 200, 0.4)' }
+        : { color: 'var(--amber)', shadow: '0 0 8px var(--amber-glow)' };
+    }
+
+    function frameStringToHtml(frameString) {
+      return (frameString || '').split(' ').map(frame => {
+        let out = '';
+        for (let i = 0; i < frame.length; i++) {
+          if (frame[i] === '*') {
+            const ch = frame[i + 1] || '';
+            const style = rollCharStyle(ch, true);
+            out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+            i += 1;
+          } else {
+            const ch = frame[i];
+            const style = rollCharStyle(ch, false);
+            out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+          }
+        }
+        return out;
+      }).join(' ');
+    }
+
+    // Builds the colored-overlay markup shown over a frame-input whenever
+    // that frame has a split marked (the input's own text is made
+    // transparent so only this overlay is visible, while the input keeps
+    // handling actual typing/caret/selection). Each character is colored
+    // independently, so e.g. a 10th-frame box like "X72" only turns the
+    // literal "X" cyan — the "7" and "2" stay amber.
+    function buildFrameOverlayHtml(frame, state) {
+      return frame.split('').map((ch, i) => {
         const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-        return marked ? '*' + ch : ch;
-      })
-      .join('');
-  }
-
-  // Inverse of the above: strips '*' markers out of a saved frame_string,
-  // returning both the clean roll symbols (for scoring/editing) and a
-  // { frameIndex: state } map describing which frames were marked.
-  function parseAnnotatedFrameString(frameString) {
-    const frames = (frameString || '').trim().length ? frameString.trim().split(/\s+/) : [];
-    const rollSymbols = [];
-    const splitFrames = {};
-
-    frames.forEach((frame, idx) => {
-      const marks = [];
-      const chars = [];
-      for (let i = 0; i < frame.length; i++) {
-        if (frame[i] === '*') {
-          marks.push(chars.length);
-        } else {
-          chars.push(frame[i]);
-        }
-      }
-      if (marks.length === 2 && marks.includes(0) && marks.includes(2)) {
-        splitFrames[idx] = 2;
-      } else if (marks.length >= 1) {
-        splitFrames[idx] = 1;
-      }
-      rollSymbols.push(...chars);
-    });
-
-    return { rollSymbols, splitFrames };
-  }
-
-  // For display-only contexts (history list) where we just want to render
-  // marked characters in red without needing the parsed symbol array.
-  function stripSplitMarkers(str) {
-    return (str || '').replace(/\*/g, '');
-  }
-
-  // Shared per-character color rules for a roll symbol: split marks win
-  // (red), then strikes (cyan), then everything else (amber). Used by
-  // both the editable frame overlay and the read-only history list so
-  // the two stay in sync.
-  function rollCharStyle(ch, marked) {
-    if (marked) {
-      return { color: 'var(--danger)', shadow: '0 0 8px rgba(255, 93, 93, 0.4)' };
+        const style = rollCharStyle(ch, marked);
+        return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
+      }).join('');
     }
-    const isX = ch.toUpperCase() === 'X';
-    return isX
-      ? { color: 'var(--cyan)', shadow: '0 0 8px rgba(41, 230, 200, 0.4)' }
-      : { color: 'var(--amber)', shadow: '0 0 8px var(--amber-glow)' };
-  }
 
-  function frameStringToHtml(frameString) {
-    return (frameString || '').split(' ').map(frame => {
-      let out = '';
-      for (let i = 0; i < frame.length; i++) {
-        if (frame[i] === '*') {
-          const ch = frame[i + 1] || '';
-          const style = rollCharStyle(ch, true);
-          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-          i += 1;
-        } else {
-          const ch = frame[i];
-          const style = rollCharStyle(ch, false);
-          out += `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-        }
-      }
-      return out;
-    }).join(' ');
-  }
-
-  // Builds the colored-overlay markup shown over a frame-input whenever
-  // that frame has a split marked (the input's own text is made
-  // transparent so only this overlay is visible, while the input keeps
-  // handling actual typing/caret/selection). Each character is colored
-  // independently, so e.g. a 10th-frame box like "X72" only turns the
-  // literal "X" cyan — the "7" and "2" stay amber.
-  function buildFrameOverlayHtml(frame, state) {
-    return frame.split('').map((ch, i) => {
-      const marked = (state === 1 && i === 0) || (state === 2 && (i === 0 || i === 2));
-      const style = rollCharStyle(ch, marked);
-      return `<span style="color:${style.color}; text-shadow:${style.shadow};">${ch}</span>`;
-    }).join('');
-  }
-
-  function parseRollValue(char) {
-    if (!char) return 0;
-    const normalized = char.toUpperCase();
-    if (normalized === 'X') return 10;
-    if (normalized === '-' || normalized === 'F') return 0;
-    const value = Number(normalized);
-    return Number.isFinite(value) ? value : 0;
-  }
-
-  function sanitizeText(raw) {
-    return raw.toUpperCase().replace(ALLOWED_CHARS, '');
-  }
-
-  // Rebuilds the frame boxes from rollSymbols (never from what's currently
-  // in the DOM) and restores the caret to pendingCursor's position in the
-  // new layout, even if that position now falls in a different box.
-  // Keeps rollSymbols capped at whatever a legal 10-frame game can hold.
-  // If an edit pushes symbols past frame 10 (e.g. the OCR misread a digit
-  // from the running score total as an extra roll), the overflow is
-  // dropped rather than shown as a phantom 11th frame.
-  function enforceCapacity(player) {
-    const frames = parseFrames(player.rollSymbols);
-    if (frames.length <= 10) return;
-    const keepLength = frames.slice(0, 10).reduce((sum, f) => sum + f.length, 0);
-    player.rollSymbols = player.rollSymbols.slice(0, keepLength);
-    if (player.pendingCursor) {
-      player.pendingCursor.global = Math.min(player.pendingCursor.global, player.rollSymbols.length);
+    function parseRollValue(char) {
+      if (!char) return 0;
+      const normalized = char.toUpperCase();
+      if (normalized === 'X') return 10;
+      if (normalized === '-' || normalized === 'F') return 0;
+      const value = Number(normalized);
+      return Number.isFinite(value) ? value : 0;
     }
-  }
 
-  function renderEditableFrames() {
-    playerRowsEl.innerHTML = '';
-    let totalScore = 0;
+    function sanitizeText(raw) {
+      return raw.toUpperCase().replace(ALLOWED_CHARS, '');
+    }
 
-    players.forEach((player, playerIdx) => {
-      if (!player.splitFrames) player.splitFrames = {};
-      enforceCapacity(player);
+    // Rebuilds the frame boxes from rollSymbols (never from what's currently
+    // in the DOM) and restores the caret to pendingCursor's position in the
+    // new layout, even if that position now falls in a different box.
+    // Keeps rollSymbols capped at whatever a legal 10-frame game can hold.
+    // If an edit pushes symbols past frame 10 (e.g. the OCR misread a digit
+    // from the running score total as an extra roll), the overflow is
+    // dropped rather than shown as a phantom 11th frame.
+    function enforceCapacity(player) {
       const frames = parseFrames(player.rollSymbols);
-      const displayFrames = frames.length ? frames : [''];
-      const playerScore = calculateBowlingScore(frames.join(' '));
-      if (typeof playerScore === 'number') totalScore += playerScore;
+      if (frames.length <= 10) return;
+      const keepLength = frames.slice(0, 10).reduce((sum, f) => sum + f.length, 0);
+      player.rollSymbols = player.rollSymbols.slice(0, keepLength);
+      if (player.pendingCursor) {
+        player.pendingCursor.global = Math.min(player.pendingCursor.global, player.rollSymbols.length);
+      }
+    }
 
-      const row = document.createElement('div');
-      row.className = 'player-row';
+    function renderEditableFrames() {
+      playerRowsEl.innerHTML = '';
+      let totalScore = 0;
 
-      const main = document.createElement('div');
-      main.className = 'player-row-main';
+      players.forEach((player, playerIdx) => {
+        if (!player.splitFrames) player.splitFrames = {};
+        enforceCapacity(player);
+        const frames = parseFrames(player.rollSymbols);
+        const displayFrames = frames.length ? frames : [''];
+        const playerScore = calculateBowlingScore(frames.join(' '));
+        if (typeof playerScore === 'number') totalScore += playerScore;
 
-      const nameInput = document.createElement('input');
-      nameInput.type = 'text';
-      nameInput.className = 'player-name-input';
-      nameInput.placeholder = 'Player name';
-      nameInput.value = player.name;
-      nameInput.style.marginBottom = '0';
-      nameInput.addEventListener('input', () => {
-        player.name = nameInput.value;
-      });
+        const row = document.createElement('div');
+        row.className = 'player-row';
 
-      const scoreSpan = document.createElement('span');
-      scoreSpan.className = 'player-row-score';
-      scoreSpan.textContent = typeof playerScore === 'number' ? playerScore : '—';
-      scoreSpan.style.marginLeft = 'auto';
-      scoreSpan.style.minWidth = '32px';
-      scoreSpan.style.textAlign = 'right';
+        const main = document.createElement('div');
+        main.className = 'player-row-main';
 
-      const nameRow = document.createElement('div');
-      nameRow.style.display = 'flex';
-      nameRow.style.alignItems = 'center';
-      nameRow.style.marginBottom = '8px';
-      nameRow.style.width = '100%';
-      nameRow.appendChild(nameInput);
-      nameRow.appendChild(scoreSpan);
-      main.appendChild(nameRow);
-
-      const framesRow = document.createElement('div');
-      framesRow.className = 'frames';
-
-      let offset = 0;
-      const inputs = [];
-
-      displayFrames.forEach((f, idx) => {
-        const cell = document.createElement('div');
-        cell.className = 'frame-cell';
-
-        const isFrame10 = idx === 9;
-        const state = player.splitFrames[idx] || 0;
-
-        const n = document.createElement('span');
-        n.className = 'frame-n' + (state ? ' split-marked' : '');
-        n.textContent = idx + 1;
-        n.title = isFrame10
-          ? 'Click to toggle split (1st roll, then 1st + 3rd roll)'
-          : 'Click to toggle split';
-        n.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const cur = player.splitFrames[idx] || 0;
-          const next = isFrame10 ? (cur + 1) % 3 : (cur ? 0 : 1);
-          if (next) {
-            player.splitFrames[idx] = next;
-          } else {
-            delete player.splitFrames[idx];
-          }
-          renderEditableFrames();
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'player-name-input';
+        nameInput.placeholder = 'Player name';
+        nameInput.value = player.name;
+        nameInput.style.marginBottom = '0';
+        nameInput.addEventListener('input', () => {
+          player.name = nameInput.value;
         });
 
-        const inputWrap = document.createElement('div');
-        inputWrap.className = 'frame-input-wrap';
+        const scoreSpan = document.createElement('span');
+        scoreSpan.className = 'player-row-score';
+        scoreSpan.textContent = typeof playerScore === 'number' ? playerScore : '—';
+        scoreSpan.style.marginLeft = 'auto';
+        scoreSpan.style.minWidth = '32px';
+        scoreSpan.style.textAlign = 'right';
 
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'frame-input has-overlay';
-        input.value = f;
-        input.autocomplete = 'off';
-        input.spellcheck = false;
-        input.dataset.player = playerIdx;
-        input.dataset.start = offset;
-        input.dataset.len = f.length;
+        const nameRow = document.createElement('div');
+        nameRow.style.display = 'flex';
+        nameRow.style.alignItems = 'center';
+        nameRow.style.marginBottom = '8px';
+        nameRow.style.width = '100%';
+        nameRow.appendChild(nameInput);
+        nameRow.appendChild(scoreSpan);
+        main.appendChild(nameRow);
 
-        input.addEventListener('input', () => {
-          const start = parseInt(input.dataset.start, 10);
-          const len = parseInt(input.dataset.len, 10);
-          const clean = sanitizeText(input.value);
-          player.rollSymbols.splice(start, len, ...clean.split(''));
-          player.pendingCursor = { global: start + clean.length };
-          renderEditableFrames();
+        const framesRow = document.createElement('div');
+        framesRow.className = 'frames';
+
+        let offset = 0;
+        const inputs = [];
+
+        displayFrames.forEach((f, idx) => {
+          const cell = document.createElement('div');
+          cell.className = 'frame-cell';
+
+          const isFrame10 = idx === 9;
+          const state = player.splitFrames[idx] || 0;
+
+          const n = document.createElement('span');
+          n.className = 'frame-n' + (state ? ' split-marked' : '');
+          n.textContent = idx + 1;
+          n.title = isFrame10
+            ? 'Click to toggle split (1st roll, then 1st + 3rd roll)'
+            : 'Click to toggle split';
+          n.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cur = player.splitFrames[idx] || 0;
+            const next = isFrame10 ? (cur + 1) % 3 : (cur ? 0 : 1);
+            if (next) {
+              player.splitFrames[idx] = next;
+            } else {
+              delete player.splitFrames[idx];
+            }
+            renderEditableFrames();
+          });
+
+          const inputWrap = document.createElement('div');
+          inputWrap.className = 'frame-input-wrap';
+
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'frame-input has-overlay';
+          input.value = f;
+          input.autocomplete = 'off';
+          input.spellcheck = false;
+          input.dataset.player = playerIdx;
+          input.dataset.start = offset;
+          input.dataset.len = f.length;
+
+          input.addEventListener('input', () => {
+            const start = parseInt(input.dataset.start, 10);
+            const len = parseInt(input.dataset.len, 10);
+            const clean = sanitizeText(input.value);
+            player.rollSymbols.splice(start, len, ...clean.split(''));
+            player.pendingCursor = { global: start + clean.length };
+            renderEditableFrames();
+          });
+
+          inputWrap.appendChild(input);
+
+          const overlay = document.createElement('div');
+          overlay.className = 'frame-overlay';
+          overlay.innerHTML = buildFrameOverlayHtml(f, state);
+          inputWrap.appendChild(overlay);
+
+          offset += f.length;
+          cell.appendChild(n);
+          cell.appendChild(inputWrap);
+          framesRow.appendChild(cell);
+          inputs.push(input);
         });
 
-        inputWrap.appendChild(input);
+        main.appendChild(framesRow);
+        row.appendChild(main);
 
-        const overlay = document.createElement('div');
-        overlay.className = 'frame-overlay';
-        overlay.innerHTML = buildFrameOverlayHtml(f, state);
-        inputWrap.appendChild(overlay);
+        const selectWrap = document.createElement('div');
+        selectWrap.className = 'player-select';
 
-        offset += f.length;
-        cell.appendChild(n);
-        cell.appendChild(inputWrap);
-        framesRow.appendChild(cell);
-        inputs.push(input);
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = player.selected;
+        checkbox.title = 'Include this player when saving';
+        checkbox.addEventListener('change', () => {
+          player.selected = checkbox.checked;
+        });
+        selectWrap.appendChild(checkbox);
+        row.appendChild(selectWrap);
+
+        playerRowsEl.appendChild(row);
+        restoreCursor(inputs, player);
       });
+    }
 
-      main.appendChild(framesRow);
-      row.appendChild(main);
+    function restoreCursor(inputs, player) {
+      if (!player.pendingCursor || !inputs.length) return;
+      let cum = 0;
+      let target = inputs[inputs.length - 1];
+      let localPos = target.value.length;
 
-      const selectWrap = document.createElement('div');
-      selectWrap.className = 'player-select';
+      for (const input of inputs) {
+        const len = input.value.length;
+        if (player.pendingCursor.global <= cum + len) {
+          target = input;
+          localPos = player.pendingCursor.global - cum;
+          break;
+        }
+        cum += len;
+      }
 
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox';
-      checkbox.checked = player.selected;
-      checkbox.title = 'Include this player when saving';
-      checkbox.addEventListener('change', () => {
-        player.selected = checkbox.checked;
-      });
-      selectWrap.appendChild(checkbox);
-      row.appendChild(selectWrap);
+      target.focus();
+      target.setSelectionRange(localPos, localPos);
+    }
 
-      playerRowsEl.appendChild(row);
-      restoreCursor(inputs, player);
+    // Given a focused frame-input and its current selection, returns the
+    // equivalent [start, end] positions in the flat rollSymbols array.
+    function globalSelection(input) {
+      const base = parseInt(input.dataset.start, 10);
+      return [base + input.selectionStart, base + input.selectionEnd];
+    }
+
+    playerRowsEl.addEventListener('keydown', (e) => {
+      const input = e.target;
+      if (!input.classList.contains('frame-input')) return;
+
+      const playerIdx = parseInt(input.dataset.player, 10);
+      const player = players[playerIdx];
+      const [gStart, gEnd] = globalSelection(input);
+
+      if (e.key === 'Backspace') {
+        e.preventDefault();
+        if (gStart !== gEnd) {
+          player.rollSymbols.splice(gStart, gEnd - gStart);
+          player.pendingCursor = { global: gStart };
+        } else if (gStart > 0) {
+          player.rollSymbols.splice(gStart - 1, 1);
+          player.pendingCursor = { global: gStart - 1 };
+        } else {
+          return;
+        }
+        renderEditableFrames();
+        return;
+      }
+
+      if (e.key === 'Delete') {
+        e.preventDefault();
+        if (gStart !== gEnd) {
+          player.rollSymbols.splice(gStart, gEnd - gStart);
+          player.pendingCursor = { global: gStart };
+        } else if (gStart < player.rollSymbols.length) {
+          player.rollSymbols.splice(gStart, 1);
+          player.pendingCursor = { global: gStart };
+        } else {
+          return;
+        }
+        renderEditableFrames();
+        return;
+      }
+
+      // Arrow-key box jumping now needs to stay within THIS player's inputs only.
+      if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) {
+        const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
+        const idx = rowInputs.indexOf(input) - 1;
+        if (idx >= 0) {
+          e.preventDefault();
+          rowInputs[idx].focus();
+          const end = rowInputs[idx].value.length;
+          rowInputs[idx].setSelectionRange(end, end);
+        }
+        return;
+      }
+      if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && input.selectionEnd === input.value.length) {
+        const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
+        const idx = rowInputs.indexOf(input) + 1;
+        if (idx < rowInputs.length) {
+          e.preventDefault();
+          rowInputs[idx].focus();
+          rowInputs[idx].setSelectionRange(0, 0);
+        }
+        return;
+      }
+
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const upper = e.key.toUpperCase();
+        if (!ALLOWED_SYMBOL.test(upper)) {
+          e.preventDefault();
+          return;
+        }
+        e.preventDefault();
+        player.rollSymbols.splice(gStart, gEnd - gStart, upper);
+        player.pendingCursor = { global: gStart + 1 };
+        renderEditableFrames();
+      }
     });
-  }
 
-  function restoreCursor(inputs, player) {
-    if (!player.pendingCursor || !inputs.length) return;
-    let cum = 0;
-    let target = inputs[inputs.length - 1];
-    let localPos = target.value.length;
+    function validateGame(symbols) {
+      const frames = parseFrames(symbols);
 
-    for (const input of inputs) {
-      const len = input.value.length;
-      if (player.pendingCursor.global <= cum + len) {
-        target = input;
-        localPos = player.pendingCursor.global - cum;
-        break;
-      }
-      cum += len;
-    }
+      for (let i = 0; i < frames.length; i++) {
+        const frame = frames[i].toUpperCase();
+        const isLast = i === frames.length - 1;
+        const isFrame10 = i === 9; // frame 10 has different rules regardless of whether more frames follow
 
-    target.focus();
-    target.setSelectionRange(localPos, localPos);
-  }
+        if (!frame) return `Frame ${i + 1} is empty.`;
 
-  // Given a focused frame-input and its current selection, returns the
-  // equivalent [start, end] positions in the flat rollSymbols array.
-  function globalSelection(input) {
-    const base = parseInt(input.dataset.start, 10);
-    return [base + input.selectionStart, base + input.selectionEnd];
-  }
+        if (!isFrame10) {
+          if (frame === 'X') continue;
 
-  playerRowsEl.addEventListener('keydown', (e) => {
-    const input = e.target;
-    if (!input.classList.contains('frame-input')) return;
-
-    const playerIdx = parseInt(input.dataset.player, 10);
-    const player = players[playerIdx];
-    const [gStart, gEnd] = globalSelection(input);
-
-    if (e.key === 'Backspace') {
-      e.preventDefault();
-      if (gStart !== gEnd) {
-        player.rollSymbols.splice(gStart, gEnd - gStart);
-        player.pendingCursor = { global: gStart };
-      } else if (gStart > 0) {
-        player.rollSymbols.splice(gStart - 1, 1);
-        player.pendingCursor = { global: gStart - 1 };
-      } else {
-        return;
-      }
-      renderEditableFrames();
-      return;
-    }
-
-    if (e.key === 'Delete') {
-      e.preventDefault();
-      if (gStart !== gEnd) {
-        player.rollSymbols.splice(gStart, gEnd - gStart);
-        player.pendingCursor = { global: gStart };
-      } else if (gStart < player.rollSymbols.length) {
-        player.rollSymbols.splice(gStart, 1);
-        player.pendingCursor = { global: gStart };
-      } else {
-        return;
-      }
-      renderEditableFrames();
-      return;
-    }
-
-    // Arrow-key box jumping now needs to stay within THIS player's inputs only.
-    if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) {
-      const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
-      const idx = rowInputs.indexOf(input) - 1;
-      if (idx >= 0) {
-        e.preventDefault();
-        rowInputs[idx].focus();
-        const end = rowInputs[idx].value.length;
-        rowInputs[idx].setSelectionRange(end, end);
-      }
-      return;
-    }
-    if (e.key === 'ArrowRight' && input.selectionStart === input.value.length && input.selectionEnd === input.value.length) {
-      const rowInputs = Array.from(playerRowsEl.querySelectorAll(`.frame-input[data-player="${playerIdx}"]`));
-      const idx = rowInputs.indexOf(input) + 1;
-      if (idx < rowInputs.length) {
-        e.preventDefault();
-        rowInputs[idx].focus();
-        rowInputs[idx].setSelectionRange(0, 0);
-      }
-      return;
-    }
-
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const upper = e.key.toUpperCase();
-      if (!ALLOWED_SYMBOL.test(upper)) {
-        e.preventDefault();
-        return;
-      }
-      e.preventDefault();
-      player.rollSymbols.splice(gStart, gEnd - gStart, upper);
-      player.pendingCursor = { global: gStart + 1 };
-      renderEditableFrames();
-    }
-  });
-
-  function validateGame(symbols) {
-    const frames = parseFrames(symbols);
-
-    for (let i = 0; i < frames.length; i++) {
-      const frame = frames[i].toUpperCase();
-      const isLast = i === frames.length - 1;
-      const isFrame10 = i === 9; // frame 10 has different rules regardless of whether more frames follow
-
-      if (!frame) return `Frame ${i + 1} is empty.`;
-
-      if (!isFrame10) {
-        if (frame === 'X') continue;
-
-        // If this is the last frame typed so far and only 1 symbol exists,
-        // it's just in-progress (e.g. user typed "7" and hasn't rolled again yet) — not invalid.
-        if (frame.length === 1) {
-          if (isLast) continue;
-          return `Frame ${i + 1} is incomplete.`;
-        }
-
-        const [first, second] = frame;
-        if (first === '/') {
-          return `Frame ${i + 1}: spare can't be the first roll.`;
-        }
-
-        if (second === '/') continue; // spare always valid
-
-        if (parseRollValue(first) + parseRollValue(second) > 10) {
-          return `Frame ${i + 1}: rolls can't total more than 10 pins (got "${frame}").`;
-        }
-        continue;
-      }
-
-      // Frame 10 - only fully validate once it looks "finished" for its case;
-      // partial frame 10s (still being typed) are left alone.
-      const chars = frame.split('');
-
-      if (chars[0] === '/') {
-        return `Frame 10: can't start with a spare (got "${frame}").`;
-      }
-
-      if (chars[0] === 'X') {
-        if (chars.length < 2) continue; // still typing
-        if (chars[1] !== 'X' && chars[1] !== '/' && chars.length === 3 &&
-            parseRollValue(chars[1]) + parseRollValue(chars[2]) > 10) {
-          return `Frame 10: 2nd and 3rd rolls can't total more than 10 pins.`;
-        }
-      } else if (chars.length >= 2 && chars[1] === '/') {
-        continue; // spare, bonus roll (if present) is always valid
-      } else if (chars.length === 2) {
-        if (parseRollValue(chars[0]) + parseRollValue(chars[1]) > 10) {
-          return `Frame 10: rolls can't total more than 10 pins (got "${frame}").`;
-        }
-      }
-      // chars.length === 1 or 0: still typing, nothing to validate yet
-    }
-
-    return null; // valid so far
-  }
-
-  function calculateBowlingScore(frameString) {
-    const frames = frameString.trim().split(/\s+/).filter(Boolean);
-    if (!frames.length) return '—';
-
-    const rolls = [];
-
-    frames.forEach((frame, index) => {
-      const normalized = frame.toUpperCase();
-      const chars = normalized.split('');
-      const isLastFrame = index === frames.length - 1;
-
-      if (isLastFrame) {
-        if (chars[0] === 'X') {
-          rolls.push(10);
-          const secondChar = chars[1] || '';
-          const thirdChar = chars[2] || '';
-
-          if (secondChar === 'X') {
-            rolls.push(10);
-          } else if (secondChar === '/') {
-            rolls.push(10 - rolls[rolls.length - 1]);
-          } else {
-            rolls.push(parseRollValue(secondChar));
+          // If this is the last frame typed so far and only 1 symbol exists,
+          // it's just in-progress (e.g. user typed "7" and hasn't rolled again yet) — not invalid.
+          if (frame.length === 1) {
+            if (isLast) continue;
+            return `Frame ${i + 1} is incomplete.`;
           }
 
-          if (thirdChar) {
+          const [first, second] = frame;
+          if (first === '/') {
+            return `Frame ${i + 1}: spare can't be the first roll.`;
+          }
+
+          if (second === '/') continue; // spare always valid
+
+          if (parseRollValue(first) + parseRollValue(second) > 10) {
+            return `Frame ${i + 1}: rolls can't total more than 10 pins (got "${frame}").`;
+          }
+          continue;
+        }
+
+        // Frame 10 - only fully validate once it looks "finished" for its case;
+        // partial frame 10s (still being typed) are left alone.
+        const chars = frame.split('');
+
+        if (chars[0] === '/') {
+          return `Frame 10: can't start with a spare (got "${frame}").`;
+        }
+
+        if (chars[0] === 'X') {
+          if (chars.length < 2) continue; // still typing
+          if (chars[1] !== 'X' && chars[1] !== '/' && chars.length === 3 &&
+            parseRollValue(chars[1]) + parseRollValue(chars[2]) > 10) {
+            return `Frame 10: 2nd and 3rd rolls can't total more than 10 pins.`;
+          }
+        } else if (chars.length >= 2 && chars[1] === '/') {
+          continue; // spare, bonus roll (if present) is always valid
+        } else if (chars.length === 2) {
+          if (parseRollValue(chars[0]) + parseRollValue(chars[1]) > 10) {
+            return `Frame 10: rolls can't total more than 10 pins (got "${frame}").`;
+          }
+        }
+        // chars.length === 1 or 0: still typing, nothing to validate yet
+      }
+
+      return null; // valid so far
+    }
+
+    function calculateBowlingScore(frameString) {
+      const frames = frameString.trim().split(/\s+/).filter(Boolean);
+      if (!frames.length) return '—';
+
+      const rolls = [];
+
+      frames.forEach((frame, index) => {
+        const normalized = frame.toUpperCase();
+        const chars = normalized.split('');
+        const isLastFrame = index === frames.length - 1;
+
+        if (isLastFrame) {
+          if (chars[0] === 'X') {
+            rolls.push(10);
+            const secondChar = chars[1] || '';
+            const thirdChar = chars[2] || '';
+
+            if (secondChar === 'X') {
+              rolls.push(10);
+            } else if (secondChar === '/') {
+              rolls.push(10 - rolls[rolls.length - 1]);
+            } else {
+              rolls.push(parseRollValue(secondChar));
+            }
+
+            if (thirdChar) {
+              if (thirdChar === '/') {
+                const previousRoll = rolls[rolls.length - 1];
+                rolls.push(10 - previousRoll);
+              } else {
+                rolls.push(parseRollValue(thirdChar));
+              }
+            }
+            return;
+          }
+
+          const firstRoll = parseRollValue(chars[0]);
+          rolls.push(firstRoll);
+
+          if (chars[1] === '/') {
+            rolls.push(10 - firstRoll);
+          } else {
+            rolls.push(parseRollValue(chars[1] || ''));
+          }
+
+          if (chars[2]) {
+            const thirdChar = chars[2];
             if (thirdChar === '/') {
               const previousRoll = rolls[rolls.length - 1];
               rolls.push(10 - previousRoll);
@@ -1384,395 +1560,468 @@
           return;
         }
 
+        if (normalized === 'X') {
+          rolls.push(10);
+          return;
+        }
+
         const firstRoll = parseRollValue(chars[0]);
-        rolls.push(firstRoll);
-
         if (chars[1] === '/') {
-          rolls.push(10 - firstRoll);
+          rolls.push(firstRoll, 10 - firstRoll);
         } else {
-          rolls.push(parseRollValue(chars[1] || ''));
+          rolls.push(firstRoll, parseRollValue(chars[1] || ''));
         }
-
-        if (chars[2]) {
-          const thirdChar = chars[2];
-          if (thirdChar === '/') {
-            const previousRoll = rolls[rolls.length - 1];
-            rolls.push(10 - previousRoll);
-          } else {
-            rolls.push(parseRollValue(thirdChar));
-          }
-        }
-        return;
-      }
-
-      if (normalized === 'X') {
-        rolls.push(10);
-        return;
-      }
-
-      const firstRoll = parseRollValue(chars[0]);
-      if (chars[1] === '/') {
-        rolls.push(firstRoll, 10 - firstRoll);
-      } else {
-        rolls.push(firstRoll, parseRollValue(chars[1] || ''));
-      }
-    });
-
-    let score = 0;
-    let rollIndex = 0;
-
-    for (let frameNum = 0; frameNum < Math.min(frames.length, 10); frameNum++) {
-      const frame = frames[frameNum];
-      if (!frame) break;
-
-      const normalized = frame.toUpperCase();
-      const isLastFrame = frameNum === frames.length - 1;
-
-      if (isLastFrame) {
-        const frameRolls = rolls.slice(rollIndex, rollIndex + 3);
-        score += frameRolls.reduce((sum, value) => sum + value, 0);
-        break;
-      }
-
-      if (normalized === 'X') {
-        score += 10 + rolls[rollIndex + 1] + rolls[rollIndex + 2];
-        rollIndex += 1;
-        continue;
-      }
-
-      if (normalized.length > 1 && normalized[1] === '/') {
-        score += 10 + rolls[rollIndex + 2];
-        rollIndex += 2;
-        continue;
-      }
-
-      score += rolls[rollIndex] + rolls[rollIndex + 1];
-      rollIndex += 2;
-    }
-
-    return score;
-  }
-
-  function formatTime(iso) {
-    try {
-      return new Date(iso).toLocaleString(undefined, {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
       });
-    } catch {
-      return '';
-    }
-  }
 
-  function formatDateTimeInput(iso) {
-    try {
-      const value = iso || new Date().toISOString();
-      // Naive datetime (e.g. EXIF capture_date) has no timezone designator —
-      // it's already wall-clock time, so use it directly.
-      if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(value)) {
-        return value.slice(0, 16);
+      let score = 0;
+      let rollIndex = 0;
+
+      for (let frameNum = 0; frameNum < Math.min(frames.length, 10); frameNum++) {
+        const frame = frames[frameNum];
+        if (!frame) break;
+
+        const normalized = frame.toUpperCase();
+        const isLastFrame = frameNum === frames.length - 1;
+
+        if (isLastFrame) {
+          const frameRolls = rolls.slice(rollIndex, rollIndex + 3);
+          score += frameRolls.reduce((sum, value) => sum + value, 0);
+          break;
+        }
+
+        if (normalized === 'X') {
+          score += 10 + rolls[rollIndex + 1] + rolls[rollIndex + 2];
+          rollIndex += 1;
+          continue;
+        }
+
+        if (normalized.length > 1 && normalized[1] === '/') {
+          score += 10 + rolls[rollIndex + 2];
+          rollIndex += 2;
+          continue;
+        }
+
+        score += rolls[rollIndex] + rolls[rollIndex + 1];
+        rollIndex += 2;
       }
-      const date = new Date(value);
-      const offset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-    } catch {
-      return '';
-    }
-  }
 
-
-  // HISTORY — past games list, search filter, edit/delete actions
-  let allGames = [];
-
-  function renderHistory(games) {
-    historyList.innerHTML = '';
-    if (!games.length) {
-      historyList.innerHTML = '<p class="empty-history">No games uploaded yet.</p>';
-      return;
-    }
-    games.forEach(g => {
-      const item = document.createElement('div');
-      item.className = 'history-item';
-      const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
-      item.innerHTML = `
-        <div class="history-main">
-          <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
-          <span class="history-score">${cleanScore}</span>
-        </div>
-        <div class="history-item-actions">
-          <time>${formatTime(g.created_at)}</time>
-          <button type="button" class="btn-edit" data-game-id="${g.id}">Edit</button>
-          <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
-        </div>
-      `;
-      historyList.appendChild(item);
-    });
-  }
-
-  function openGameForEditing(game) {
-    const suspendQueue = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
-    resetResultPanel();
-    queueSuspendedForEdit = suspendQueue;
-    pendingEdit = { gameId: game.id };
-    const parsed = parseAnnotatedFrameString(game.frame_string);
-    players = [{
-      name: game.player_name || '',
-      rollSymbols: parsed.rollSymbols,
-      pendingCursor: null,
-      selected: true,
-      splitFrames: parsed.splitFrames,
-    }];
-    playerRowsEl.classList.add('hide-checkboxes');
-    editedDateTimeInput.value = formatDateTimeInput(game.created_at);
-    renderEditableFrames();
-    resultThumb.removeAttribute('src');
-    resultEl.classList.add('visible');
-    saveBtn.textContent = 'Save changes';
-    setStatus('Editing previous game');
-    document.getElementById('queue-progress').textContent = 'Editing a past game';
-  }
-
-  historyList.addEventListener('click', async (e) => {
-    const editButton = e.target.closest('.btn-edit');
-    if (editButton) {
-      const gameId = Number(editButton.dataset.gameId);
-      if (!gameId) return;
-      const game = allGames.find(item => item.id === gameId);
-      if (game) openGameForEditing(game);
-      return;
+      return score;
     }
 
-    const deleteButton = e.target.closest('.btn-delete');
-    if (!deleteButton) return;
-
-    const gameId = Number(deleteButton.dataset.gameId);
-    if (!gameId) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/api/games/${gameId}`, { method: 'DELETE', credentials: 'include' });
-      if (res.status === 401) {
-        showLoggedOut();
-        return;
-      }
-      if (!res.ok) {
-        setStatus('Could not delete that game.', true);
-        return;
-      }
-      await loadHistory();
-    } catch {
-      setStatus('Could not delete that game.', true);
-    }
-  });
-
-  async function loadHistory() {
-    try {
-      const res = await fetch(`${API_BASE}/api/games`, { credentials: 'include' });
-      if (res.status === 401) { showLoggedOut(); return; }
-      allGames = await res.json();
-      applyHistoryFilter();
-    } catch {
-      historyList.innerHTML = '<p class="empty-history">Could not load history.</p>';
-    }
-  }
-
-  function applyHistoryFilter() {
-    const q = historySearch.value.trim().toLowerCase();
-    const filtered = q
-      ? allGames.filter(g => g.frame_string.toLowerCase().includes(q))
-      : allGames;
-    renderHistory(filtered);
-  }
-
-  historySearch.addEventListener('input', applyHistoryFilter);
-
-
-  // SAVE / DISCARD — persisting the result panel back to the server
-
-  // ---------------------------------------------------------- background saves
-  // Saving/editing shouldn't block the UI. Once client-side validation
-  // passes, the request is handed to this queue and the UI moves on right
-  // away. Requests run one at a time, in order, so a save/edit can't race
-  // a later one against the same game.
-  let saveOpQueue = [];
-  let saveOpRunning = false;
-
-  function resetResultPanel() {
-    queueRequestToken++;
-    saveBtn.disabled = false;
-    discardBtn.disabled = false;
-    pendingUpload = null;
-    pendingEdit = null;
-    pendingRetry = null;
-    players = [];
-    playerRowsEl.innerHTML = '';
-    playerRowsEl.classList.remove('hide-checkboxes');
-    resultEl.classList.remove('visible');
-    saveError.textContent = '';
-    fileInput.value = '';
-    editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
-    saveBtn.textContent = 'Save game';
-    if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
-      URL.revokeObjectURL(resultThumb.src);
-    }
-    resultThumb.removeAttribute('src');
-  }
-
-  function collectFrameStringFor(player) {
-    if (!player.rollSymbols.length) return null;
-    const frames = parseFrames(player.rollSymbols);
-    const splitFrames = player.splitFrames || {};
-    return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || 0)).join(' ');
-  }
-
-  function enqueueSaveOp(run) {
-    saveOpQueue.push(run);
-    pumpSaveOpQueue();
-  }
-
-  async function pumpSaveOpQueue() {
-    if (saveOpRunning) return;
-    saveOpRunning = true;
-    while (saveOpQueue.length) {
-      const run = saveOpQueue.shift();
+    function formatTime(iso) {
       try {
-        await run();
-      } catch (err) {
-        console.error('Background save failed:', err);
-        setStatus(err?.message || 'Could not save a game in the background.', true);
+        return new Date(iso).toLocaleString(undefined, {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+        });
+      } catch {
+        return '';
       }
     }
-    saveOpRunning = false;
-  }
 
-  saveBtn.addEventListener('click', () => {
-    if (saveBtn.disabled) return; // ignore rapid double-clicks/taps
-
-    if (pendingRetry) {
-      retryCurrentUpload();
-      return;
+    function formatDateTimeInput(iso) {
+      try {
+        const value = iso || new Date().toISOString();
+        // Naive datetime (e.g. EXIF capture_date) has no timezone designator —
+        // it's already wall-clock time, so use it directly.
+        if (!/[Zz]|[+-]\d{2}:?\d{2}$/.test(value)) {
+          return value.slice(0, 16);
+        }
+        const date = new Date(value);
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+      } catch {
+        return '';
+      }
     }
 
-    if (!pendingUpload && !pendingEdit) return;
-    saveError.textContent = '';
 
-    if (pendingEdit) {
-      const player = players[0];
-      const frameString = collectFrameStringFor(player);
-      if (frameString === null) {
-        saveError.textContent = 'Add at least one roll before saving.';
+    // HISTORY — past games list, search filter, edit/delete actions
+    let allGames = [];
+
+    function renderHistory(games) {
+      historyList.innerHTML = '';
+      if (!games.length) {
+        historyList.innerHTML = '<p class="empty-history">No games uploaded yet.</p>';
         return;
       }
-      const validationError = validateGame(player.rollSymbols);
-      if (validationError) {
-        saveError.textContent = validationError;
+      games.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
+        item.innerHTML = `
+      <div class="history-main">
+        <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+        <span class="history-score">${cleanScore}</span>
+      </div>
+      <div class="history-item-actions">
+        <time>${formatTime(g.created_at)}</time>
+        <button type="button" class="btn-edit" data-game-id="${g.id}">Edit</button>
+        <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
+      </div>
+    `;
+        historyList.appendChild(item);
+      });
+    }
+
+    function openGameForEditing(game) {
+      const suspendQueue = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
+      resetResultPanel();
+      queueSuspendedForEdit = suspendQueue;
+      pendingEdit = { gameId: game.id };
+      const parsed = parseAnnotatedFrameString(game.frame_string);
+      players = [{
+        name: game.player_name || '',
+        rollSymbols: parsed.rollSymbols,
+        pendingCursor: null,
+        selected: true,
+        splitFrames: parsed.splitFrames,
+      }];
+      playerRowsEl.classList.add('hide-checkboxes');
+      editedDateTimeInput.value = formatDateTimeInput(game.created_at);
+      renderEditableFrames();
+      resultThumb.removeAttribute('src');
+      resultEl.classList.add('visible');
+      saveBtn.textContent = 'Save changes';
+      setStatus('Editing previous game');
+      document.getElementById('queue-progress').textContent = 'Editing a past game';
+    }
+
+    historyList.addEventListener('click', async (e) => {
+      const editButton = e.target.closest('.btn-edit');
+      if (editButton) {
+        const gameId = Number(editButton.dataset.gameId);
+        if (!gameId) return;
+        const game = allGames.find(item => item.id === gameId);
+        if (game) openGameForEditing(game);
         return;
+      }
+
+      const deleteButton = e.target.closest('.btn-delete');
+      if (!deleteButton) return;
+
+      const gameId = Number(deleteButton.dataset.gameId);
+      if (!gameId) return;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/games/${gameId}`, { method: 'DELETE', credentials: 'include' });
+        if (res.status === 401) {
+          showLoggedOut();
+          return;
+        }
+        if (!res.ok) {
+          setStatus('Could not delete that game.', true);
+          return;
+        }
+        await loadHistory();
+      } catch {
+        setStatus('Could not delete that game.', true);
+      }
+    });
+
+    async function loadHistory() {
+      try {
+        const res = await fetch(`${API_BASE}/api/games`, { credentials: 'include' });
+        if (res.status === 401) { showLoggedOut(); return; }
+        allGames = await res.json();
+        applyHistoryFilter();
+      } catch {
+        historyList.innerHTML = '<p class="empty-history">Could not load history.</p>';
+      }
+    }
+
+    function applyHistoryFilter() {
+      const q = historySearch.value.trim().toLowerCase();
+      const filtered = q
+        ? allGames.filter(g => g.frame_string.toLowerCase().includes(q))
+        : allGames;
+      renderHistory(filtered);
+    }
+
+    historySearch.addEventListener('input', applyHistoryFilter);
+
+
+    // SAVE / DISCARD — persisting the result panel back to the server
+
+    // ---------------------------------------------------------- background saves
+    // Saving/editing shouldn't block the UI. Once client-side validation
+    // passes, the request is handed to this queue and the UI moves on right
+    // away. Requests run one at a time, in order, so a save/edit can't race
+    // a later one against the same game.
+    let saveOpQueue = [];
+    let saveOpRunning = false;
+
+    function resetResultPanel() {
+      queueRequestToken++;
+      saveBtn.disabled = false;
+      discardBtn.disabled = false;
+      pendingUpload = null;
+      pendingEdit = null;
+      pendingRetry = null;
+      players = [];
+      playerRowsEl.innerHTML = '';
+      playerRowsEl.classList.remove('hide-checkboxes');
+      resultEl.classList.remove('visible');
+      saveError.textContent = '';
+      fileInput.value = '';
+      editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
+      saveBtn.textContent = 'Save game';
+      if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
+        URL.revokeObjectURL(resultThumb.src);
+      }
+      resultThumb.removeAttribute('src');
+      resetThumbZoom();
+    }
+
+    function collectFrameStringFor(player) {
+      if (!player.rollSymbols.length) return null;
+      const frames = parseFrames(player.rollSymbols);
+      const splitFrames = player.splitFrames || {};
+      return frames.map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || 0)).join(' ');
+    }
+
+    function enqueueSaveOp(run) {
+      saveOpQueue.push(run);
+      pumpSaveOpQueue();
+    }
+
+    async function pumpSaveOpQueue() {
+      if (saveOpRunning) return;
+      saveOpRunning = true;
+      while (saveOpQueue.length) {
+        const run = saveOpQueue.shift();
+        try {
+          await run();
+        } catch (err) {
+          console.error('Background save failed:', err);
+          setStatus(err?.message || 'Could not save a game in the background.', true);
+        }
+      }
+      saveOpRunning = false;
+    }
+
+    saveBtn.addEventListener('click', () => {
+      if (saveBtn.disabled) return; // ignore rapid double-clicks/taps
+
+      if (pendingRetry) {
+        retryCurrentUpload();
+        return;
+      }
+
+      if (!pendingUpload && !pendingEdit) return;
+      saveError.textContent = '';
+
+      if (pendingEdit) {
+        const player = players[0];
+        const frameString = collectFrameStringFor(player);
+        if (frameString === null) {
+          saveError.textContent = 'Add at least one roll before saving.';
+          return;
+        }
+        const validationError = validateGame(player.rollSymbols);
+        if (validationError) {
+          saveError.textContent = validationError;
+          return;
+        }
+
+        saveBtn.disabled = true;
+        discardBtn.disabled = true;
+
+        const gameId = pendingEdit.gameId;
+        const playerName = player.name || null;
+        const createdAtValue = editedDateTimeInput.value
+          ? new Date(editedDateTimeInput.value).toISOString()
+          : null;
+        const wasQueueSuspended = queueSuspendedForEdit;
+
+        if (wasQueueSuspended) {
+          queueSuspendedForEdit = false;
+          showQueueItem(queueIndex); // re-enables the buttons once it renders
+        } else {
+          resetResultPanel(); // also re-enables the buttons
+        }
+
+        enqueueSaveOp(async () => {
+          const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ frame_string: frameString, player_name: playerName, created_at: createdAtValue }),
+          });
+          if (res.status === 401) { showLoggedOut(); return; }
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.detail || 'Could not save this game.');
+          loadHistory();
+        });
+        return;
+      }
+
+      const selectedPlayers = players.filter(p => p.selected);
+
+      for (const player of selectedPlayers) {
+        const frameString = collectFrameStringFor(player);
+        if (frameString === null) {
+          saveError.textContent = `${player.name || 'A player'}: add at least one roll before saving.`;
+          return;
+        }
+        const validationError = validateGame(player.rollSymbols);
+        if (validationError) {
+          saveError.textContent = `${player.name || 'A player'}: ${validationError}`;
+          return;
+        }
       }
 
       saveBtn.disabled = true;
       discardBtn.disabled = true;
 
-      const gameId = pendingEdit.gameId;
-      const playerName = player.name || null;
-      const createdAtValue = editedDateTimeInput.value
-        ? new Date(editedDateTimeInput.value).toISOString()
-        : null;
-      const wasQueueSuspended = queueSuspendedForEdit;
+      const imageKey = pendingUpload.imageKey;
+      const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
+      const payloads = selectedPlayers.map(player => ({
+        image_key: imageKey,
+        frame_string: collectFrameStringFor(player),
+        player_name: player.name || null,
+        created_at: createdAtValue,
+      }));
 
-      if (wasQueueSuspended) {
-        queueSuspendedForEdit = false;
-        showQueueItem(queueIndex); // re-enables the buttons once it renders
+      if (uploadQueue.length) {
+        showQueueItem(queueIndex + 1); // re-enables the buttons once it renders
       } else {
         resetResultPanel(); // also re-enables the buttons
       }
 
       enqueueSaveOp(async () => {
-        const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ frame_string: frameString, player_name: playerName, created_at: createdAtValue }),
-        });
-        if (res.status === 401) { showLoggedOut(); return; }
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Could not save this game.');
+        for (const payload of payloads) {
+          const res = await fetch(`${API_BASE}/api/games`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+          });
+          if (res.status === 401) { showLoggedOut(); return; }
+          const data = await res.json();
+          if (!res.ok) throw new Error(`${payload.player_name || 'A player'}: ${data.detail || 'Could not save.'}`);
+        }
         loadHistory();
       });
-      return;
-    }
-
-    const selectedPlayers = players.filter(p => p.selected);
-
-    for (const player of selectedPlayers) {
-      const frameString = collectFrameStringFor(player);
-      if (frameString === null) {
-        saveError.textContent = `${player.name || 'A player'}: add at least one roll before saving.`;
-        return;
-      }
-      const validationError = validateGame(player.rollSymbols);
-      if (validationError) {
-        saveError.textContent = `${player.name || 'A player'}: ${validationError}`;
-        return;
-      }
-    }
-
-    saveBtn.disabled = true;
-    discardBtn.disabled = true;
-
-    const imageKey = pendingUpload.imageKey;
-    const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
-    const payloads = selectedPlayers.map(player => ({
-      image_key: imageKey,
-      frame_string: collectFrameStringFor(player),
-      player_name: player.name || null,
-      created_at: createdAtValue,
-    }));
-
-    if (uploadQueue.length) {
-      showQueueItem(queueIndex + 1); // re-enables the buttons once it renders
-    } else {
-      resetResultPanel(); // also re-enables the buttons
-    }
-
-    enqueueSaveOp(async () => {
-      for (const payload of payloads) {
-        const res = await fetch(`${API_BASE}/api/games`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        });
-        if (res.status === 401) { showLoggedOut(); return; }
-        const data = await res.json();
-        if (!res.ok) throw new Error(`${payload.player_name || 'A player'}: ${data.detail || 'Could not save.'}`);
-      }
-      loadHistory();
     });
-  });
 
-  discardBtn.addEventListener('click', () => {
-    if (discardBtn.disabled) return; // ignore rapid double-clicks/taps
-    saveBtn.disabled = true;
-    discardBtn.disabled = true;
+    discardBtn.addEventListener('click', () => {
+      if (discardBtn.disabled) return; // ignore rapid double-clicks/taps
+      saveBtn.disabled = true;
+      discardBtn.disabled = true;
 
-    if (pendingEdit) {
-      if (queueSuspendedForEdit) {
-        queueSuspendedForEdit = false;
-        showQueueItem(queueIndex);
+      if (pendingEdit) {
+        if (queueSuspendedForEdit) {
+          queueSuspendedForEdit = false;
+          showQueueItem(queueIndex);
+        } else {
+          resetResultPanel();
+        }
+        return;
+      }
+      if (uploadQueue.length) {
+        showQueueItem(queueIndex + 1);
       } else {
         resetResultPanel();
       }
-      return;
-    }
-    if (uploadQueue.length) {
-      showQueueItem(queueIndex + 1);
-    } else {
-      resetResultPanel();
-    }
-  });
+    });
 
 
-  // INIT
-  setAuthMode('login');
-  checkSession();
-</script>
+    // PLAYERS TAB
+    // displays a list of all registered players
+    // clicking a player name opens a page showing their history
+    // should be identical to the me page at this point, except without
+    // the upload file input and edit panel
+    // history items won't have edit/delete buttons
+    const playersContent = document.getElementById('players-content');
+    const playersListView = document.getElementById('players-list-view');
+    const playersListEl = document.getElementById('players-list');
+    const playerDetailView = document.getElementById('player-detail-view');
+    const playerDetailBack = document.getElementById('player-detail-back');
+    const playerDetailName = document.getElementById('player-detail-name');
+    const playerDetailHistory = document.getElementById('player-detail-history');
+
+    let selectedPlayerUsername = null;
+
+    async function loadPlayersList() {
+      playersListView.style.display = '';
+      playerDetailView.style.display = 'none';
+      playersListEl.innerHTML = '<p class="empty-history">Loading players…</p>';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/players`);
+        if (!res.ok) throw new Error();
+        const players = await res.json();
+
+        if (!players.length) {
+          playersListEl.innerHTML = '<p class="empty-history">No players yet.</p>';
+          return;
+        }
+
+        playersListEl.innerHTML = '';
+        players.forEach(p => {
+          const item = document.createElement('div');
+          item.className = 'history-item';
+          item.style.cursor = 'pointer';
+          item.innerHTML = `<span class="frame-string">${p.username}</span>`;
+          item.addEventListener('click', () => openPlayerDetail(p.username));
+          playersListEl.appendChild(item);
+        });
+      } catch {
+        playersListEl.innerHTML = '<p class="empty-history">Could not load players.</p>';
+      }
+    }
+
+    async function openPlayerDetail(username) {
+      selectedPlayerUsername = username;
+      playersListView.style.display = 'none';
+      playerDetailView.style.display = '';
+      playerDetailName.textContent = username;
+      playerDetailHistory.innerHTML = '<p class="empty-history">Loading games…</p>';
+
+      try {
+        const res = await fetch(`${API_BASE}/api/players/${encodeURIComponent(username)}/games`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderPlayerHistory(data.games);
+      } catch {
+        playerDetailHistory.innerHTML = '<p class="empty-history">Could not load this player\'s games.</p>';
+      }
+    }
+
+    // Same rendering as renderHistory(), minus the edit/delete buttons.
+    function renderPlayerHistory(games) {
+      playerDetailHistory.innerHTML = '';
+      if (!games.length) {
+        playerDetailHistory.innerHTML = '<p class="empty-history">No games yet.</p>';
+        return;
+      }
+      games.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
+        item.innerHTML = `
+      <div class="history-main">
+        <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+        <span class="history-score">${cleanScore}</span>
+      </div>
+      <div class="history-item-actions">
+        <time>${formatTime(g.created_at)}</time>
+      </div>
+    `;
+        playerDetailHistory.appendChild(item);
+      });
+    }
+
+    playerDetailBack.addEventListener('click', () => {
+      selectedPlayerUsername = null;
+      loadPlayersList();
+    });
+
+
+    // INIT
+    setAuthMode('login');
+    checkSession();
+  </script>
 </body>
+
 </html>

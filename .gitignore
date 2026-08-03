@@ -30,6 +30,7 @@ backend/.env
 # Frontend build output
 frontend/dist/
 frontend/node_modules/
+frontend/.env.development
 
 # Python cache and local data
 backend/__pycache__/
