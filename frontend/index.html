@@ -7,19 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    color-scheme: dark;
-    --void: #0a0d10;
-    --panel: #12161b;
-    --panel-border: #232b33;
-    --amber: #ffb000;
-    --amber-dim: #4a3300;
-    --amber-glow: rgba(255, 176, 0, 0.35);
-    --cyan: #29e6c8;
-    --text: #e8ecef;
-    --text-muted: #7b8792;
-    --danger: #ff5d5d;
-  }
 
   * { box-sizing: border-box; }
 
@@ -717,12 +704,6 @@
 </head>
 <body>
 <main>
-  <!-- old account bar
-  <div class="account-bar" id="account-bar">
-    <span>Signed in as <strong id="account-email"></strong></span>
-    <button class="link-btn" id="logout-btn">Log out</button>
-  </div>
-  -->
 
   <nav class="nav-bar" id="nav-bar">
     <div class="nav-links">
@@ -860,12 +841,6 @@
 
 <script>
   const API_BASE = "";
-
-  /* old account bar
-  const accountBar = document.getElementById('account-bar');
-  const accountEmail = document.getElementById('account-email');
-  const logoutBtn = document.getElementById('logout-btn');
-  */
 
   const navLoginTrigger = document.getElementById('nav-login-trigger');
   const navAvatarContainer = document.getElementById('nav-avatar-container');
