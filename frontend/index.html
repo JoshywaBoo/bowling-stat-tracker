@@ -152,6 +152,7 @@
         <div class="result-actions">
           <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
           <button type="button" class="btn-discard" id="discard-btn">Discard</button>
+          <button type="button" class="btn-delete btn-menu-shape" id="delete-btn" style="display:none;">Delete game</button>
         </div>
         <p class="save-error" id="save-error"></p>
       </div>
@@ -306,6 +307,7 @@
     const saveBtn = document.getElementById('save-btn');
     const discardBtn = document.getElementById('discard-btn');
     const saveError = document.getElementById('save-error');
+    const deleteBtn = document.getElementById('delete-btn');
     const editedDateTimeInput = document.getElementById('edited-datetime');
 
 
@@ -961,6 +963,7 @@
       playerRowsEl.classList.remove('hide-checkboxes'); // make sure checkboxes come back for multi-player queue items
       saveBtn.textContent = 'Save game';   // undo "Save changes" label left over from editing
       discardBtn.textContent = 'Discard';  // undo "Cancel" label left over from editing
+      deleteBtn.style.display = 'none';    // hide the delete button for edit menu
       if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
       }
@@ -1758,7 +1761,6 @@
           </div>
           <div class="history-item-actions">
             <time>${formatTime(g.created_at)}</time>
-            <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
           </div>
           `;
         historyList.appendChild(item);
@@ -1787,33 +1789,12 @@
       resultEl.classList.add('visible');
       saveBtn.textContent = 'Save changes';
       discardBtn.textContent = 'Cancel';
+      deleteBtn.style.display = '';
       setStatus('');
       document.getElementById('queue-progress').textContent = 'Editing a past game';
     }
 
     historyList.addEventListener('click', async (e) => {
-      const deleteButton = e.target.closest('.btn-delete');
-      if (deleteButton) {
-        const gameId = Number(deleteButton.dataset.gameId);
-        if (!gameId) return;
-
-        try {
-          const res = await fetch(`${API_BASE}/api/games/${gameId}`, { method: 'DELETE', credentials: 'include' });
-          if (res.status === 401) {
-            showLoggedOut();
-            return;
-          }
-          if (!res.ok) {
-            setStatus('Could not delete that game.', true);
-            return;
-          }
-          await loadHistory();
-        } catch {
-          setStatus('Could not delete that game.', true);
-        }
-        return;
-      }
-
       const item = e.target.closest('.history-item');
       if (!item) return;
       const gameId = Number(item.dataset.gameId);
@@ -1871,6 +1852,7 @@
       editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
       saveBtn.textContent = 'Save game';
       discardBtn.textContent = 'Discard';
+      deleteBtn.style.display = 'none';
       thumbRow.style.display = '';
       if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
@@ -2032,6 +2014,40 @@
         showQueueItem(queueIndex + 1);
       } else {
         resetResultPanel();
+      }
+    });
+
+
+    deleteBtn.addEventListener('click', async () => {
+      if (deleteBtn.disabled || !pendingEdit) return;
+
+      const gameId = pendingEdit.gameId;
+      deleteBtn.disabled = true;
+      saveBtn.disabled = true;
+      discardBtn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.status === 401) { showLoggedOut(); return; }
+        if (!res.ok) {
+          setStatus('Could not delete that game.', true);
+          return;
+        }
+
+        if (queueSuspendedForEdit) {
+          queueSuspendedForEdit = false;
+          showQueueItem(queueIndex);
+        } else {
+          resetResultPanel();
+        }
+        await loadHistory();
+      } catch {
+        setStatus('Could not delete that game.', true);
+      } finally {
+        deleteBtn.disabled = false;
       }
     });
 
