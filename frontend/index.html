@@ -136,7 +136,7 @@
         <div class="result-header">
           <span class="label">Review &amp; edit before saving</span>
         </div>
-        <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 0-9, /, -, F</p>
+        <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 1-9, /, -, F</p>
         <div class="result-meta">
           <label for="edited-datetime">Date / time</label>
           <input type="datetime-local" id="edited-datetime" />
@@ -196,8 +196,8 @@
 
     // Only these symbols are ever valid on a bowling scoreboard roll.
     // Used by: sanitizeText, keydown handler (frames section)
-    const ALLOWED_SYMBOL = /^[X0-9/\-F]$/i;
-    const ALLOWED_CHARS = /[^X0-9/\-F]/gi;
+    const ALLOWED_SYMBOL = /^[X1-9/\-F]$/i;
+    const ALLOWED_CHARS = /[^X1-9/\-F]/gi;
 
     // function to check whether an image can be rendered by browser
     const CAN_PREVIEW_LOCALLY = /^image\/(jpeg|png|webp)$/i;
@@ -1983,11 +1983,13 @@
 
       const imageKey = pendingUpload.imageKey;
       const createdAtValue = editedDateTimeInput.value ? new Date(editedDateTimeInput.value).toISOString() : null;
+      const currentFileName = uploadQueue[queueIndex]?.file?.name || null;
       const payloads = selectedPlayers.map(player => ({
         image_key: imageKey,
         frame_string: collectFrameStringFor(player),
         player_name: player.name || null,
         created_at: createdAtValue,
+        file_name: currentFileName,
       }));
 
       if (uploadQueue.length) {
