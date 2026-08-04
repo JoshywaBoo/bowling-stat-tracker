@@ -31,6 +31,7 @@ section.history {
     border-radius: 10px;
     margin-bottom: 8px;
     background: var(--panel);
+    cursor: pointer;
 }
 
 .history-item img {
@@ -85,21 +86,6 @@ section.history {
     color: var(--text-muted);
     margin-right: 0;
     margin-left: 0;
-}
-
-.btn-edit {
-    border: 1px solid var(--cyan);
-    background: transparent;
-    color: var(--cyan);
-    border-radius: 999px;
-    padding: 7px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-edit:hover {
-    background: rgba(41, 230, 200, 0.12);
 }
 
 .btn-delete {
