@@ -1,5 +1,8 @@
 section.history {
     margin-top: 48px;
+    display: flex;
+    flex-direction: column;
+    max-height: 640px; /* pick whatever fits your layout */
 }
 
 .history h2 {
@@ -9,6 +12,14 @@ section.history {
     color: var(--text-muted);
     font-weight: 600;
     margin-bottom: 14px;
+    flex-shrink: 0; /* keeps the heading pinned above the scroll area */
+}
+
+#history-list {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0; /* lets it actually shrink and scroll instead of growing forever */
+    padding-right: 4px; /* keeps the scrollbar from overlapping item content */
 }
 
 .history-item {
