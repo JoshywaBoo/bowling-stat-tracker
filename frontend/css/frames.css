@@ -216,24 +216,6 @@
     filter: brightness(1.08);
 }
 
-.btn-discard {
-    flex: 0 0 auto;
-    background: none;
-    border: 1px solid var(--panel-border);
-    color: var(--text-muted);
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-family: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-discard:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
 .save-error {
     font-size: 13px;
     color: var(--danger);
