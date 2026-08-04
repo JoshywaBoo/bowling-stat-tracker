@@ -240,35 +240,3 @@
     margin-top: 12px;
     min-height: 0;
 }
-
-.thumb-row {
-    margin-top: 18px;
-}
-
-.thumb-zoom-wrap {
-  position: relative;
-  width: 100%;
-  height: 420px; /* fixed - this is the "menu size" that must stay constant */
-  overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid var(--panel-border);
-  background: #0d1114;
-  cursor: zoom-in;
-  touch-action: none; /* we handle pan/zoom ourselves */
-}
-.thumb-zoom-wrap.zoomed {
-  cursor: grab;
-}
-.thumb-zoom-wrap.dragging {
-  cursor: grabbing;
-}
-
-.thumb-zoom-wrap img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  transform-origin: 0 0;
-  user-select: none;
-  -webkit-user-drag: none;
-}
