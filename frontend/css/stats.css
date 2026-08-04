@@ -105,7 +105,7 @@ body.stats-active .stats-panel {
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: 37.6%;
+    top: 347px;
     right: 0;
     transform: translateY(-50%) translateX(0);
     width: 28px;
