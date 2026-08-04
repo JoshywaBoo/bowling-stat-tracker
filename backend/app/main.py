@@ -72,16 +72,16 @@ def init_db() -> None:
         execute(
             conn,
             """
-            CREATE TABLE IF NOT EXISTS games (
-                id BIGSERIAL PRIMARY KEY,
-                user_id BIGINT NOT NULL,
-                image_key TEXT NOT NULL,
-                player_name TEXT,
-                frame_string TEXT NOT NULL,
-                file_name TEXT,
-                created_at TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users (id)
-            )
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint WHERE conname = 'uq_games_user_created_file'
+                ) THEN
+                    ALTER TABLE games
+                    ADD CONSTRAINT uq_games_user_created_file
+                    UNIQUE (user_id, created_at, file_name, player_name);
+                END IF;
+            END $$;
             """,
         )
 
@@ -413,7 +413,7 @@ def confirm_game(
         if "uq_games_user_created_file" in str(exc):
             raise HTTPException(
                 409,
-                "A game with this file name and time already exists.",
+                "A game for this player with this file name and time already exists.",
             )
         raise
 
