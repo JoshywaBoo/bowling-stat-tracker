@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="css/frames.css" />
   <link rel="stylesheet" href="css/players.css" />
   <link rel="stylesheet" href="css/history.css" />
+  <link rel="stylesheet" href="css/stats.css" />
 
 </head>
 
@@ -173,6 +174,21 @@
     </div>
   </main>
 
+  <button type="button" class="stats-toggle" id="stats-toggle" aria-label="Toggle stats panel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <aside class="stats-panel" id="stats-panel">
+    <h2 id="stats-panel-title">Stats</h2>
+    <div class="stats-range-toggle" id="stats-range-toggle">
+      <button type="button" class="stats-range-btn active" data-range="all">All</button>
+      <button type="button" class="stats-range-btn" data-range="20">Last 20</button>
+    </div>
+    <div id="stats-content"></div>
+  </aside>
+
   <script>
     // CONFIG — constants used everywhere below 
     const API_BASE = "";
@@ -214,15 +230,18 @@
           appContent.classList.add('visible');
           authPanel.classList.remove('visible');
           applyHistoryFilter();
+          setStatsPanelVisible(true);
         } else {
           appContent.classList.remove('visible');
           authPanel.classList.add('visible');
+          setStatsPanelVisible(false);
         }
       } else {
         appContent.classList.remove('visible');
         authPanel.classList.remove('visible');
         verifyPanel.classList.remove('visible');
         forgotPanel.classList.remove('visible');
+        setStatsPanelVisible(false);
       }
 
       if (currentView === 'players') {
@@ -1211,6 +1230,25 @@
       }
     }
 
+    // Returns which roll-indices in a frame-10 chunk are legal split targets:
+    // the roll must follow a "fresh rack" (frame start, or previous roll was
+    // a strike/spare) and must not itself be a strike or a spare-completion —
+    // both of those clear the rack, so there's no split left standing.
+    function frame10ValidMarkIndices(rollChars) {
+      const valid = [];
+      let prevReset = true;
+      for (let i = 0; i < rollChars.length; i++) {
+        const ch = rollChars[i].toUpperCase();
+        const pins = parseRollValue(ch);
+        const canSplit = prevReset && pins > 0 && pins < 10; // fresh rack, knocked some down but not all
+        if (canSplit) {
+          valid.push(i);
+        }
+        prevReset = (ch === 'X' || ch === '/');
+      }
+      return valid;
+    }
+
     function renderEditableFrames() {
       playerRowsEl.innerHTML = '';
       let totalScore = 0;
@@ -1278,26 +1316,35 @@
             e.stopPropagation();
             const current = player.splitFrames[idx] || [];
 
-            let next;
             if (!isFrame10) {
-              next = current.length ? [] : [0];
-            } else {
-              // Cycle: none -> roll1 -> roll2 -> roll3 -> roll1+roll3 -> none.
-              // Skips any state referencing a roll index that doesn't exist yet in
-              // this frame (e.g. an open 2-roll frame 10 has no index 2 to offer).
-              const rollCount = f.length;
-              const sameSet = (a, b) => a.length === b.length && a.every(v => b.includes(v));
-
-              const sequence = [[], [0], [1], [2], [0, 2]];
-              const currentPos = sequence.findIndex(s => sameSet(s, current));
-              let nextPos = (currentPos === -1 ? 0 : currentPos) + 1;
-
-              // Skip any step in the sequence that references a roll that doesn't exist yet.
-              while (nextPos < sequence.length && sequence[nextPos].some(i => i >= rollCount)) {
-                nextPos++;
+              const rollChar = f[0]; // only roll 0 of the frame can carry the split mark
+              const pins = parseRollValue(rollChar);
+              const canSplit = pins > 0 && pins < 10; // not a strike, not a miss/gutter
+              if (current.length) {
+                // Always allow clearing an existing mark, even if it's now invalid.
+                delete player.splitFrames[idx];
+                renderEditableFrames();
+                return;
               }
-              next = nextPos < sequence.length ? sequence[nextPos] : [];
+              if (!canSplit) return; // strike or miss — nothing to split
+              player.splitFrames[idx] = [0];
+              renderEditableFrames();
+              return;
             }
+
+            // Frame 10: cycle none -> roll1 -> roll2 -> roll3 -> roll1+roll3 -> none,
+            // skipping any state that references a roll that doesn't exist yet OR
+            // isn't a legal split target (strike, spare-completion, or not a fresh rack).
+            const validIdx = new Set(frame10ValidMarkIndices(f.split('')));
+            const sameSet = (a, b) => a.length === b.length && a.every(v => b.includes(v));
+            const sequence = [[], [0], [1], [2], [0, 2]];
+            const currentPos = sequence.findIndex(s => sameSet(s, current));
+            let nextPos = (currentPos === -1 ? 0 : currentPos) + 1;
+
+            while (nextPos < sequence.length && sequence[nextPos].some(i => !validIdx.has(i))) {
+              nextPos++;
+            }
+            const next = nextPos < sequence.length ? sequence[nextPos] : [];
 
             if (next.length) {
               player.splitFrames[idx] = next;
@@ -1671,16 +1718,16 @@
         item.className = 'history-item';
         const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
         item.innerHTML = `
-      <div class="history-main">
-        <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
-        <span class="history-score">${cleanScore}</span>
-      </div>
-      <div class="history-item-actions">
-        <time>${formatTime(g.created_at)}</time>
-        <button type="button" class="btn-edit" data-game-id="${g.id}">Edit</button>
-        <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
-      </div>
-    `;
+          <div class="history-main">
+          <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+          <span class="history-score">${cleanScore}</span>
+          </div>
+          <div class="history-item-actions">
+          <time>${formatTime(g.created_at)}</time>
+          <button type="button" class="btn-edit" data-game-id="${g.id}">Edit</button>
+          <button type="button" class="btn-delete" data-game-id="${g.id}">Delete</button>
+          </div>
+          `;
         historyList.appendChild(item);
       });
     }
@@ -1757,6 +1804,7 @@
         ? allGames.filter(g => g.frame_string.toLowerCase().includes(q))
         : allGames;
       renderHistory(filtered);
+      renderStats(filtered, 'Your stats');
     }
 
     historySearch.addEventListener('input', applyHistoryFilter);
@@ -2000,11 +2048,14 @@
       playerDetailName.textContent = username;
       playerDetailHistory.innerHTML = '<p class="empty-history">Loading games…</p>';
 
+      setStatsPanelVisible(true);
+
       try {
         const res = await fetch(`${API_BASE}/api/players/${encodeURIComponent(username)}/games`);
         if (!res.ok) throw new Error();
         const data = await res.json();
         renderPlayerHistory(data.games);
+        renderStats(data.games, `${username}'s stats`);
       } catch {
         playerDetailHistory.innerHTML = '<p class="empty-history">Could not load this player\'s games.</p>';
       }
@@ -2022,22 +2073,209 @@
         item.className = 'history-item';
         const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
         item.innerHTML = `
-      <div class="history-main">
-        <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
-        <span class="history-score">${cleanScore}</span>
-      </div>
-      <div class="history-item-actions">
-        <time>${formatTime(g.created_at)}</time>
-      </div>
-    `;
+          <div class="history-main">
+          <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
+          <span class="history-score">${cleanScore}</span>
+          </div>
+          <div class="history-item-actions">
+          <time>${formatTime(g.created_at)}</time>
+          </div>
+          `;
         playerDetailHistory.appendChild(item);
       });
     }
 
     playerDetailBack.addEventListener('click', () => {
       selectedPlayerUsername = null;
+      setStatsPanelVisible(false);
       loadPlayersList();
     });
+
+
+    // STATS PANEL — shared fixed/drawer panel, reused for both "me" and any
+    // player-detail view. Only its title + content are swapped between views;
+    // the panel/toggle DOM itself is a single instance outside <main>.
+    const statsPanel = document.getElementById('stats-panel');
+    const statsPanelTitle = document.getElementById('stats-panel-title');
+    const statsContent = document.getElementById('stats-content');
+    const statsToggle = document.getElementById('stats-toggle');
+    const statsRangeToggle = document.getElementById('stats-range-toggle');
+    const statsRangeBtns = Array.from(statsRangeToggle.querySelectorAll('.stats-range-btn'));
+
+    let statsRange = 'all'; // 'all' | '20'
+    let lastStatsGames = []; // the full (untrimmed) game list currently backing the panel, so switching range doesn't need a re-fetch
+
+    statsRangeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        statsRange = btn.dataset.range;
+        statsRangeBtns.forEach(b => b.classList.toggle('active', b === btn));
+        renderStats(lastStatsGames, statsPanelTitle.textContent);
+      });
+    });
+
+
+    statsToggle.addEventListener('click', () => {
+      const open = statsPanel.classList.toggle('open');
+      statsToggle.classList.toggle('panel-open', open);
+    });
+
+    function setStatsPanelVisible(visible) {
+      document.body.classList.toggle('stats-active', visible);
+      if (!visible) {
+        statsPanel.classList.remove('open');
+        statsToggle.classList.remove('panel-open');
+      }
+    }
+
+    // Parses a single frame token (e.g. "*7/" or "X") into its bare characters
+    // plus which of those characters carried a '*' split marker. Same logic
+    // parseAnnotatedFrameString uses per-frame, extracted for reuse in stats.
+    function parseFrameChars(frame) {
+      const marks = [];
+      const chars = [];
+      for (let i = 0; i < frame.length; i++) {
+        if (frame[i] === '*') {
+          marks.push(chars.length);
+        } else {
+          chars.push(frame[i]);
+        }
+      }
+      return { chars, marks };
+    }
+
+    // Rough strike/spare counts scan every frame character directly (including
+    // frame 10's bonus rolls) - counts literal 'X'/'/' occurrences rather than
+    // re-deriving strict per-frame bowling semantics, since this is purely
+    // informational, not scored.
+    function computeStats(games) {
+      if (!games.length) {
+        return {
+          count: 0, average: null, high: null, strikes: 0, spares: 0,
+          spareConversionRate: null, splitRate: null, splitConversionRate: null,
+        };
+      }
+
+      let total = 0;
+      let scored = 0;
+      let high = -Infinity;
+      let strikes = 0;
+      let spares = 0;
+
+      // "Opportunity" = any first-ball roll at a fresh, full rack of pins -
+      // i.e. any point a split could physically occur. For frames 1-9 that's
+      // just roll 1 of the frame (unless it's a strike, which leaves no pins
+      // to split). Frame 10 can contain several such fresh-rack rolls, since
+      // a strike or spare there resets the pins for the next roll.
+      let spareOpportunities = 0;
+      let spareConversions = 0;
+      let splitsLeft = 0;
+      let splitsConverted = 0; // subset of splitsLeft that were then picked up
+
+      games.forEach(g => {
+        const clean = stripSplitMarkers(g.frame_string);
+        const score = calculateBowlingScore(clean);
+        if (typeof score === 'number') {
+          total += score;
+          scored++;
+          if (score > high) high = score;
+        }
+
+        const frames = clean.trim().split(/\s+/).filter(Boolean);
+        frames.forEach(frame => {
+          for (const ch of frame) {
+            if (ch === 'X') strikes++;
+            if (ch === '/') spares++;
+          }
+        });
+
+        // Split/spare-conversion analysis needs the *unstripped* frame_string,
+        // since that's where the split markers ('*') live.
+        const rawFrames = (g.frame_string || '').trim().length
+          ? g.frame_string.trim().split(/\s+/)
+          : [];
+
+        rawFrames.forEach((frame, frameIdx) => {
+          const { chars, marks } = parseFrameChars(frame);
+          if (!chars.length) return;
+          const isFrame10 = frameIdx === 9;
+
+          if (!isFrame10) {
+            // Standard frame: only roll 1 is a fresh-rack opportunity.
+            if (chars[0].toUpperCase() === 'X') return; // strike - no pins left to split
+            spareOpportunities++;
+            const wasSplit = marks.includes(0);
+            if (wasSplit) splitsLeft++;
+            if (chars[1] === '/') {
+              spareConversions++;
+              if (wasSplit) splitsConverted++;
+            }
+            return;
+          }
+
+          // Frame 10: walk each roll, tracking whether the PREVIOUS roll in
+          // this frame reset the rack (strike or spare) - roll 0 always does
+          // (fresh frame), so it's always an opportunity.
+          let prevReset = true;
+          for (let i = 0; i < chars.length; i++) {
+            const ch = chars[i].toUpperCase();
+            if (prevReset && ch !== '/') {
+              spareOpportunities++;
+              const wasSplit = marks.includes(i);
+              if (wasSplit) splitsLeft++;
+
+              const nextCh = chars[i + 1];
+              if (nextCh === '/') {
+                spareConversions++;
+                if (wasSplit) splitsConverted++;
+              }
+            }
+            prevReset = (ch === 'X' || ch === '/');
+          }
+        });
+      });
+
+      return {
+        count: games.length,
+        average: scored ? Math.round(total / scored) : null,
+        high: high === -Infinity ? null : high,
+        strikes,
+        spares,
+        spareConversionRate: spareOpportunities
+          ? Math.round((spareConversions / spareOpportunities) * 100)
+          : null,
+        splitRate: spareOpportunities
+          ? Math.round((splitsLeft / spareOpportunities) * 100)
+          : null,
+        splitConversionRate: splitsLeft
+          ? Math.round((splitsConverted / splitsLeft) * 100)
+          : null,
+      };
+    }
+
+    function renderStats(games, title) {
+      statsPanelTitle.textContent = title || 'Stats';
+      lastStatsGames = games; // keep full list so range can re-slice without re-fetching
+
+      // assumes game list is ordered newest-first
+      const scoped = statsRange === '20' ? games.slice(0, 20) : games;
+      const stats = computeStats(scoped);
+
+      if (!stats.count) {
+        statsContent.innerHTML = '<p class="empty-history">No stats yet.</p>';
+        return;
+      }
+
+      statsContent.innerHTML = `
+        <div class="stat-row"><span class="stat-label">Games</span><span class="stat-value">${stats.count}</span></div>
+        <div class="stat-row"><span class="stat-label">Average</span><span class="stat-value">${stats.average ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">High game</span><span class="stat-value">${stats.high ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Strikes</span><span class="stat-value">${stats.strikes}</span></div>
+        <div class="stat-row"><span class="stat-label">Spares</span><span class="stat-value">${stats.spares}</span></div>
+        <div class="stat-row"><span class="stat-label">Spare conversion</span><span class="stat-value">${stats.spareConversionRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Split rate</span><span class="stat-value">${stats.splitRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Split conversion</span><span class="stat-value">${stats.splitConversionRate ?? '—'}%</span></div>
+        `;
+    }
 
 
     // INIT

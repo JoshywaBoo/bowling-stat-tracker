@@ -128,7 +128,7 @@ def list_player_games(username: str):
         rows = execute(
             conn,
             "SELECT id, player_name, frame_string, created_at FROM games "
-            "WHERE user_id = ? ORDER BY id DESC",
+            "WHERE user_id = ? ORDER BY created_at DESC",
             (user_row["id"],),
         ).fetchall()
 
@@ -420,7 +420,7 @@ def list_games(user: dict = Depends(auth.get_current_user)):
         rows = execute(
             conn,
             "SELECT id, image_key, player_name, frame_string, created_at FROM games "
-            "WHERE user_id = ? ORDER BY id DESC",
+            "WHERE user_id = ? ORDER BY created_at DESC",
             (user["id"],),
         ).fetchall()
     return [row_to_game(r) for r in rows]
