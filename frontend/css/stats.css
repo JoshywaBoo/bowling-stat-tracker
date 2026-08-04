@@ -1,3 +1,7 @@
+:root {
+  --stats-drawer-width: 260px;
+}
+
 /* Desktop: fixed panel docked to the right of the centered <main> column */
 .stats-panel {
   display: none; /* shown only when body has .stats-active */
@@ -9,7 +13,7 @@
   border: 1px solid var(--panel-border);
   border-radius: 14px;
   padding: 20px;
-  z-index: 5;
+  z-index: 15;
 }
 body.stats-active .stats-panel {
   display: block;
@@ -83,7 +87,7 @@ body.stats-active .stats-panel {
   .stats-panel {
     top: 0;
     right: 0;
-    width: 260px;
+    width: var(--stats-drawer-width);
     height: 100vh;
     border-radius: 0;
     border-top: none;
@@ -103,7 +107,7 @@ body.stats-active .stats-panel {
     position: fixed;
     top: 37.6%;
     right: 0;
-    transform: translateY(-50%);
+    transform: translateY(-50%) translateX(0);
     width: 28px;
     height: 44px;
     background: var(--panel);
@@ -112,11 +116,11 @@ body.stats-active .stats-panel {
     border-radius: 8px 0 0 8px;
     color: var(--text-muted);
     cursor: pointer;
-    z-index: 10;
-    transition: right 0.25s ease;
+    z-index: 20;
+    transition: transform 0.25s ease;
   }
-  .stats-toggle.panel-open {
-    right: 260px;
+  body.stats-active .stats-toggle.panel-open {
+    transform: translateY(-50%) translateX(calc(-1 * var(--stats-drawer-width)));
   }
   .stats-toggle svg {
     width: 16px;
@@ -127,4 +131,3 @@ body.stats-active .stats-panel {
     transform: rotate(180deg);
   }
 }
-
