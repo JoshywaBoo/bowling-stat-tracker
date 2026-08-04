@@ -103,6 +103,14 @@ section.history {
     background: rgba(255, 93, 93, 0.12);
 }
 
+.btn-delete.btn-menu-shape {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    min-width: 140px;
+    text-align: center;
+}
+
 .empty-history {
     font-size: 13px;
     color: var(--text-muted);
