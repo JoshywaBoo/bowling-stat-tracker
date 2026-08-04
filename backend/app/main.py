@@ -78,6 +78,7 @@ def init_db() -> None:
                 image_key TEXT NOT NULL,
                 player_name TEXT,
                 frame_string TEXT NOT NULL,
+                file_name TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users (id)
             )
@@ -94,6 +95,7 @@ def row_to_game(row: sqlite3.Row) -> dict:
         "id": row["id"],
         "player_name": row["player_name"],
         "frame_string": row["frame_string"],
+        "file_name": row["file_name"],
         "created_at": row["created_at"],
     }
 
@@ -127,7 +129,7 @@ def list_player_games(username: str):
 
         rows = execute(
             conn,
-            "SELECT id, player_name, frame_string, created_at FROM games "
+            "SELECT id, player_name, frame_string, file_name, created_at FROM games "
             "WHERE user_id = ? ORDER BY created_at DESC",
             (user_row["id"],),
         ).fetchall()
@@ -344,6 +346,7 @@ class ConfirmGameRequest(BaseModel):
     frame_string: str
     player_name: str | None = None
     created_at: str | None = None
+    file_name: str | None = None
 
 
 class UpdateGameRequest(BaseModel):
@@ -398,18 +401,27 @@ def confirm_game(
     payload: ConfirmGameRequest, user: dict = Depends(auth.get_current_user)
 ):
     created_at_value = payload.created_at or datetime.now(timezone.utc).isoformat()
-    with get_db() as conn:
-        game_id = insert_and_get_id(
-            conn,
-            "INSERT INTO games (user_id, image_key, player_name, frame_string, created_at) "
-            "VALUES (?, ?, ?, ?, ?) RETURNING id",
-            (user["id"], "", payload.player_name, payload.frame_string, created_at_value),
-        )
+    try:
+        with get_db() as conn:
+            game_id = insert_and_get_id(
+                conn,
+                "INSERT INTO games (user_id, image_key, player_name, frame_string, file_name, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+                (user["id"], "", payload.player_name, payload.frame_string, payload.file_name, created_at_value),
+            )
+    except Exception as exc:
+        if "uq_games_user_created_file" in str(exc):
+            raise HTTPException(
+                409,
+                "A game with this file name and time already exists.",
+            )
+        raise
 
     return {
         "id": game_id,
         "player_name": payload.player_name,
         "frame_string": payload.frame_string,
+        "file_name": payload.file_name,
         "created_at": created_at_value,
     }
 
@@ -419,7 +431,7 @@ def list_games(user: dict = Depends(auth.get_current_user)):
     with get_db() as conn:
         rows = execute(
             conn,
-            "SELECT id, image_key, player_name, frame_string, created_at FROM games "
+            "SELECT id, image_key, player_name, frame_string, file_name, created_at FROM games "
             "WHERE user_id = ? ORDER BY created_at DESC",
             (user["id"],),
         ).fetchall()
