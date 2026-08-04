@@ -38,6 +38,7 @@ load_dotenv()
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 MODEL = os.environ.get("MODEL", "gemini-3.5-flash-lite")
+FALLBACK_MODEL = os.environ.get("FALLBACK_MODEL", "gemini-3.1-flash-lite")
 
 PROMPT = """This is a photo of a bowling alley's LED scoreboard display,
 showing one or more bowlers.
@@ -115,22 +116,12 @@ def parse_frames(raw_symbols: list[str]) -> str:
 
 
 def read_scoreboard(image_bytes: bytes) -> str:
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
-            PROMPT,
-        ],
-    )
+    response = _generate_with_fallback(image_bytes)
     raw = response.text.strip()
 
-    # Be forgiving of formatting the model might slip in anyway (spaces,
-    # stray newlines, bullet punctuation) - keep only the roll symbols.
     tokens = re.findall(r"\*?(?:X|[0-9]|/|-|F)", raw.replace(",", " "))
 
     if not tokens:
-        # Nothing usable came back - surface the raw text so it's visible
-        # for debugging rather than silently returning an empty string.
         return raw
 
     return parse_frames(tokens)
@@ -138,16 +129,11 @@ def read_scoreboard(image_bytes: bytes) -> str:
 
 def read_scoreboard_multiplayer(image_bytes: bytes) -> list[dict]:
     """
-    TEST-ONLY: parallel implementation for multiplayer support, not yet
-    wired into main.py. Returns one {"name", "frame_string"} dict per
+    Returns one {"name", "frame_string"} dict per
     bowler detected in the photo.
     """
-    response = client.models.generate_content(
-        model=MODEL,
-        contents=[
-            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
-            PROMPT,
-        ],
+    response = _generate_with_fallback(
+        image_bytes,
         config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
     raw = response.text.strip()
@@ -156,7 +142,7 @@ def read_scoreboard_multiplayer(image_bytes: bytes) -> list[dict]:
     print(raw)
     print("------------------------")
 
-    players = json.loads(raw)  # let this throw on malformed JSON - we want to see it
+    players = json.loads(raw)
 
     if not isinstance(players, list):
         raise ValueError(f"Expected a JSON array, got: {type(players)}")
@@ -176,6 +162,44 @@ def read_scoreboard_multiplayer(image_bytes: bytes) -> list[dict]:
         })
 
     return results
+
+
+def _generate_with_fallback(image_bytes: bytes, config=None):
+    """
+    Calls the vision model with the primary MODEL; if that call raises
+    for any reason (rate limit, timeout, transient API error, etc.), retries
+    once against FALLBACK_MODEL before giving up. Both read_scoreboard and
+    read_scoreboard_multiplayer share this so they get the same fallback
+    behavior instead of duplicating the try/except.
+    """
+    contents = [
+        types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+        PROMPT,
+    ]
+
+    try:
+        return client.models.generate_content(
+            model=MODEL,
+            contents=contents,
+            config=config,
+        )
+    except Exception as primary_exc:
+        print(f"WARNING: primary model '{MODEL}' failed ({primary_exc!r}); "
+              f"retrying with fallback model '{FALLBACK_MODEL}'")
+        try:
+            return client.models.generate_content(
+                model=FALLBACK_MODEL,
+                contents=contents,
+                config=config,
+            )
+        except Exception as fallback_exc:
+            # Both models failed - raise the fallback's error, but note the
+            # primary failure too so it's visible in logs/the 502 message
+            # main.py surfaces.
+            raise RuntimeError(
+                f"Both models failed. Primary ({MODEL}): {primary_exc}. "
+                f"Fallback ({FALLBACK_MODEL}): {fallback_exc}"
+            ) from fallback_exc
 
 
 if __name__ == "__main__":
