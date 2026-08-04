@@ -1317,7 +1317,8 @@
             const current = player.splitFrames[idx] || [];
 
             if (!isFrame10) {
-              const pins = parseRollValue(f); // f is a single char here (roll 0 of the frame)
+              const rollChar = f[0]; // only roll 0 of the frame can carry the split mark
+              const pins = parseRollValue(rollChar);
               const canSplit = pins > 0 && pins < 10; // not a strike, not a miss/gutter
               if (current.length) {
                 // Always allow clearing an existing mark, even if it's now invalid.
