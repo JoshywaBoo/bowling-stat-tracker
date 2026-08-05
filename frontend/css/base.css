@@ -28,6 +28,16 @@ body {
     padding: 48px 20px 80px;
 }
 
+html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+    display: none;
+}
+
 main {
     width: 100%;
     max-width: 640px;
