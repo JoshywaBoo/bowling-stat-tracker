@@ -20,6 +20,12 @@ section.history {
     flex: 1 1 auto;
     min-height: 0; /* lets it actually shrink and scroll instead of growing forever */
     padding-right: 4px; /* keeps the scrollbar from overlapping item content */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#history-list::-webkit-scrollbar {
+    display: none;
 }
 
 .history-item {
