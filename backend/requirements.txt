@@ -7,7 +7,7 @@ email-validator
 psycopg2-binary
 python-dotenv
 google-genai
-resend
+mailersend
 opencv-python-headless
 numpy
 gunicorn
