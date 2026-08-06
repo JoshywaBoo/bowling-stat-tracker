@@ -1,5 +1,8 @@
 {
   "appId": "com.joshywa.bowlingstattracker",
   "appName": "Bowling Stat Tracker",
-  "webDir": "dist"
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
 }
