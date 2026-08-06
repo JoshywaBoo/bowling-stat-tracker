@@ -2,7 +2,8 @@ section.history {
     margin-top: 48px;
     display: flex;
     flex-direction: column;
-    max-height: 640px; /* pick whatever fits your layout */
+    max-height: 640px;
+    /* pick whatever fits your layout */
 }
 
 .history h2 {
@@ -12,14 +13,17 @@ section.history {
     color: var(--text-muted);
     font-weight: 600;
     margin-bottom: 14px;
-    flex-shrink: 0; /* keeps the heading pinned above the scroll area */
+    flex-shrink: 0;
+    /* keeps the heading pinned above the scroll area */
 }
 
 #history-list {
     overflow-y: auto;
     flex: 1 1 auto;
-    min-height: 0; /* lets it actually shrink and scroll instead of growing forever */
-    padding-right: 4px; /* keeps the scrollbar from overlapping item content */
+    min-height: 0;
+    /* lets it actually shrink and scroll instead of growing forever */
+    padding-right: 4px;
+    /* keeps the scrollbar from overlapping item content */
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -94,27 +98,16 @@ section.history {
     margin-left: 0;
 }
 
+/* .btn-delete's shape/sizing (and the old .btn-menu-shape override) now
+   live in base.css as the shared .btn / .btn-pill classes. This file only
+   carries delete's color/intent styling. */
 .btn-delete {
-    border: 1px solid var(--danger);
-    background: transparent;
+    border-color: var(--danger);
     color: var(--danger);
-    border-radius: 999px;
-    padding: 7px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
 }
 
 .btn-delete:hover {
     background: rgba(255, 93, 93, 0.12);
-}
-
-.btn-delete.btn-menu-shape {
-    border-radius: 8px;
-    padding: 12px 16px;
-    font-size: 14px;
-    min-width: 140px;
-    text-align: center;
 }
 
 .empty-history {
@@ -122,4 +115,92 @@ section.history {
     color: var(--text-muted);
     text-align: center;
     padding: 20px 0;
+}
+
+.btn-menu-dots {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+.btn-menu-dots:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+}
+
+.history-item-dropdown {
+    position: fixed;
+    /* escapes #history-list's overflow-y clipping */
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+    min-width: 130px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 30;
+}
+
+.history-item-dropdown .dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 13px;
+    padding: 10px 14px;
+    cursor: pointer;
+}
+
+.history-item-dropdown .dropdown-item:hover {
+    background: #171c22;
+}
+
+#history-dropdown-delete {
+    color: var(--danger);
+}
+
+.confirm-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.confirm-modal {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 28px 24px;
+    width: 90%;
+    max-width: 320px;
+    text-align: center;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.confirm-modal p {
+    margin: 0 0 22px;
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.confirm-modal-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.confirm-modal-actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    box-sizing: border-box;
 }

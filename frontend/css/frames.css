@@ -206,14 +206,15 @@
     margin-top: 20px;
 }
 
-.btn-save {
-    flex: 1;
-    background: var(--amber);
-    color: #241900;
+/* Shape/sizing for .btn now lives in base.css (.btn, .btn-pill).
+   This just widens Discard/Delete specifically within the result panel. */
+.result-actions .btn-discard,
+.result-actions .btn-delete {
+    min-width: 140px;
 }
 
-.btn-save:hover {
-    filter: brightness(1.08);
+.btn-save {
+    flex: 1;
 }
 
 .save-error {
