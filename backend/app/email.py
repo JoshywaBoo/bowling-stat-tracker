@@ -1,8 +1,9 @@
 import os
-import resend
 from urllib.parse import urlencode
 
-resend.api_key = os.getenv("RESEND_API_KEY")
+from mailersend import MailerSendClient, EmailBuilder
+
+ms = MailerSendClient()  # reads MAILERSEND_API_KEY from the environment
 
 API_BASE = os.environ.get("API_BASE", "https://bowling-stat-tracker-backend.onrender.com")
 
@@ -35,9 +36,15 @@ Password reset code{who}:
 This code expires in 10 minutes.
 """
 
-    resend.Emails.send({
-        "from": os.getenv("EMAIL_FROM"),
-        "to": email,
-        "subject": subject,
-        "text": text,
-    })
+    email_request = (
+        EmailBuilder()
+        .from_email(os.getenv("EMAIL_FROM"), "Bowling Stat Tracker")
+        .to_many([{"email": email}])
+        .subject(subject)
+        .text(text)
+        .build()
+    )
+
+    response = ms.emails.send(email_request)
+    if not response.success:
+        raise RuntimeError(f"MailerSend error ({response.status_code}): {response.data}")

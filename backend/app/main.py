@@ -14,11 +14,17 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 import secrets
-from app.email import send_email_code
 import base64
 
-
 from dotenv import load_dotenv
+
+# Load .env BEFORE importing any app.* module — some of them (e.g. app.email)
+# read environment variables at import time via os.getenv(), so if load_dotenv()
+# runs after those imports, they end up seeing an empty/incomplete environment.
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
+
+from app.email import send_email_code
+
 from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, EmailStr
@@ -37,8 +43,6 @@ try:
     libc = ctypes.CDLL("libc.so.6")
 except OSError:
     libc = None  # not on a glibc-based system (e.g. local dev on Mac) - just skip trimming
-
-load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 
 app = FastAPI(title="Bowling Scoreboard Reader")
 
@@ -189,10 +193,9 @@ def signup(payload: SignupRequest):
     )
 
     send_email_code(
-        ADMIN_EMAIL,
+        payload.email,
         code,
         "verify",
-        for_email=payload.email
     )
 
     return {
@@ -208,10 +211,9 @@ def login(payload: LoginRequest, response: Response):
         code = str(secrets.randbelow(900000) + 100000)
         auth.save_verification_code(user["id"], code)
         send_email_code(
-            ADMIN_EMAIL,
+            user["email"],
             code,
             "verify",
-            for_email=user["email"]
         )
         raise HTTPException(
             403,
@@ -288,10 +290,9 @@ def resend_verification(payload: ForgotPasswordRequest):
         )
 
         send_email_code(
-            ADMIN_EMAIL,
+            payload.email,
             code,
             "verify",
-            for_email=payload.email
         )
 
     return {
@@ -312,7 +313,7 @@ def forgot_password(payload: ForgotPasswordRequest):
     if user:
         code = str(secrets.randbelow(900000) + 100000)
         auth.save_reset_code(user["id"], code, 10)
-        send_email_code(ADMIN_EMAIL, code, "reset", for_email=payload.email)
+        send_email_code(payload.email, code, "reset")
 
     return {"message": "If the email exists, a code was sent"}
 
@@ -490,7 +491,3 @@ def delete_game(game_id: int, user: dict = Depends(auth.get_current_user)):
         execute(conn, "DELETE FROM games WHERE id = ?", (game_id,))
 
     return {"ok": True}
-
-
-# Serve the frontend last so it doesn't shadow the /api and /images routes above.
-# app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="static")
