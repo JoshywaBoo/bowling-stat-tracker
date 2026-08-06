@@ -65,7 +65,7 @@
           <label for="auth-password">Password</label>
           <input type="password" id="auth-password" autocomplete="current-password" required />
         </div>
-        <button type="submit" class="btn-primary" id="auth-submit">Sign in</button>
+        <button type="submit" class="btn-auth-submit" id="auth-submit">Sign in</button>
         <p class="auth-error" id="auth-error"></p>
       </form>
       <button type="button" class="link-btn" id="forgot-password-btn" style="margin-top:14px;">Forgot password?</button>
@@ -81,7 +81,7 @@
           <label for="verify-code">Verification code</label>
           <input type="text" id="verify-code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required />
         </div>
-        <button type="submit" class="btn-primary" id="verify-submit">Verify</button>
+        <button type="submit" class="btn-auth-submit" id="verify-submit">Verify</button>
         <p class="auth-error" id="verify-error"></p>
       </form>
       <button type="button" class="link-btn" id="resend-code-btn" style="margin-top:10px;">Resend code</button>
@@ -99,7 +99,7 @@
           <label for="forgot-email">Email</label>
           <input type="email" id="forgot-email" autocomplete="email" required />
         </div>
-        <button type="submit" class="btn-primary" id="forgot-request-submit">Send reset code</button>
+        <button type="submit" class="btn-primary" id="btn-auth-submit">Send reset code</button>
         <p class="auth-error" id="forgot-request-error"></p>
       </form>
 
@@ -112,7 +112,7 @@
           <label for="reset-new-password">New password</label>
           <input type="password" id="reset-new-password" autocomplete="new-password" required />
         </div>
-        <button type="submit" class="btn-primary" id="forgot-reset-submit">Reset password</button>
+        <button type="submit" class="btn-primary" id="btn-auth-submit">Reset password</button>
         <p class="auth-error" id="forgot-reset-error"></p>
       </form>
 
@@ -150,10 +150,9 @@
         </div>
         <p class="status" id="queue-progress"></p>
         <div class="result-actions">
-          <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
-          <button type="button" class="btn-discard" id="discard-btn">Discard</button>
-          <button type="button" class="btn-delete btn-menu-shape" id="delete-btn" style="display:none;">Delete
-            game</button>
+          <button type="button" class="btn btn-primary btn-save" id="save-btn">Save game</button>
+          <button type="button" class="btn btn-discard" id="discard-btn">Discard</button>
+          <button type="button" class="btn btn-delete" id="delete-btn" style="display:none;">Delete game</button>
         </div>
         <p class="save-error" id="save-error"></p>
       </div>
@@ -191,6 +190,21 @@
     </div>
     <div id="stats-content"></div>
   </aside>
+
+  <div class="confirm-modal-overlay" id="confirm-modal-overlay" style="display:none;">
+    <div class="confirm-modal">
+      <p id="confirm-modal-message"></p>
+      <div class="confirm-modal-actions">
+        <button type="button" class="btn btn-delete" id="confirm-modal-ok">Delete</button>
+        <button type="button" class="btn btn-discard" id="confirm-modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="history-item-dropdown" id="history-item-dropdown" style="display:none;">
+    <button type="button" class="dropdown-item" id="history-dropdown-edit">Edit</button>
+    <button type="button" class="dropdown-item" id="history-dropdown-delete">Delete</button>
+  </div>
 
   <script>
     // CONFIG — constants used everywhere below 
@@ -290,6 +304,33 @@
       await fetch(`${API_BASE}/api/logout`, { method: 'POST', credentials: 'include' });
       showLoggedOut();
     });
+
+    const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+    const confirmModalMessage = document.getElementById('confirm-modal-message');
+    const confirmModalOk = document.getElementById('confirm-modal-ok');
+    const confirmModalCancel = document.getElementById('confirm-modal-cancel');
+
+    function showConfirmModal(message) {
+      return new Promise((resolve) => {
+        confirmModalMessage.textContent = message;
+        confirmModalOverlay.style.display = 'flex';
+
+        function cleanup(result) {
+          confirmModalOverlay.style.display = 'none';
+          confirmModalOk.removeEventListener('click', onOk);
+          confirmModalCancel.removeEventListener('click', onCancel);
+          confirmModalOverlay.removeEventListener('click', onOverlay);
+          resolve(result);
+        }
+        function onOk() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+        function onOverlay(e) { if (e.target === confirmModalOverlay) cleanup(false); }
+
+        confirmModalOk.addEventListener('click', onOk);
+        confirmModalCancel.addEventListener('click', onCancel);
+        confirmModalOverlay.addEventListener('click', onOverlay);
+      });
+    }
 
 
     // SHARED APP-CONTENT REFS — used across upload, frame-editing, and save
@@ -1774,6 +1815,7 @@
           </div>
           <div class="history-item-actions">
             <time>${formatTime(g.created_at)}</time>
+            <button type="button" class="btn-menu-dots" data-game-id="${g.id}" aria-label="Game options">&#8942;</button>
           </div>
           `;
         historyList.appendChild(item);
@@ -1807,14 +1849,65 @@
       document.getElementById('queue-progress').textContent = 'Editing a past game';
     }
 
-    historyList.addEventListener('click', async (e) => {
-      const item = e.target.closest('.history-item');
-      if (!item) return;
-      const gameId = Number(item.dataset.gameId);
-      if (!gameId) return;
+    const historyItemDropdown = document.getElementById('history-item-dropdown');
+    const historyDropdownEdit = document.getElementById('history-dropdown-edit');
+    const historyDropdownDelete = document.getElementById('history-dropdown-delete');
+    let activeHistoryMenuGameId = null;
+
+    function closeHistoryMenu() {
+      historyItemDropdown.style.display = 'none';
+      activeHistoryMenuGameId = null;
+    }
+
+    function openHistoryMenu(dotsBtn, gameId) {
+      const wasOpenForThis = activeHistoryMenuGameId === gameId && historyItemDropdown.style.display !== 'none';
+      closeHistoryMenu();
+      if (wasOpenForThis) return; // clicking the same dots again just closes it
+
+      const rect = dotsBtn.getBoundingClientRect();
+      const dropdownWidth = 130; // matches the CSS min-width
+      const horizontalOffset = 20;
+      const verticalOffset = 13;
+
+      const opensRight = rect.right + horizontalOffset + dropdownWidth <= window.innerWidth;
+
+      historyItemDropdown.style.top = `${rect.top - verticalOffset}px`;
+      if (opensRight) {
+        historyItemDropdown.style.left = `${rect.right + horizontalOffset}px`;
+        historyItemDropdown.style.right = 'auto';
+      } else {
+        historyItemDropdown.style.left = 'auto';
+        historyItemDropdown.style.right = `${window.innerWidth - rect.left + horizontalOffset}px`;
+      }
+      historyItemDropdown.style.display = 'block';
+      activeHistoryMenuGameId = gameId;
+    }
+
+    historyList.addEventListener('click', (e) => {
+      const dotsBtn = e.target.closest('.btn-menu-dots');
+      if (!dotsBtn) return;
+      e.stopPropagation();
+      openHistoryMenu(dotsBtn, Number(dotsBtn.dataset.gameId));
+    });
+
+    historyItemDropdown.addEventListener('click', (e) => e.stopPropagation());
+
+    historyDropdownEdit.addEventListener('click', () => {
+      const gameId = activeHistoryMenuGameId;
+      closeHistoryMenu();
       const game = allGames.find(g => g.id === gameId);
       if (game) openGameForEditing(game);
     });
+
+    historyDropdownDelete.addEventListener('click', async () => {
+      const gameId = activeHistoryMenuGameId;
+      closeHistoryMenu();
+      const confirmed = await showConfirmModal('Delete selected game?');
+      if (confirmed) await deleteGameById(gameId);
+    });
+
+    document.addEventListener('click', () => closeHistoryMenu());
+    window.addEventListener('scroll', () => closeHistoryMenu(), true);
 
     async function loadHistory() {
       try {
@@ -2083,6 +2176,32 @@
         deleteBtn.disabled = false;
       }
     });
+
+    async function deleteGameById(gameId) {
+      try {
+        const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.status === 401) { showLoggedOut(); return; }
+        if (!res.ok) {
+          setStatus('Could not delete that game.', true);
+          return;
+        }
+        // If this game happened to be open in the edit panel, close it too.
+        if (pendingEdit && pendingEdit.gameId === gameId) {
+          if (queueSuspendedForEdit) {
+            queueSuspendedForEdit = false;
+            showQueueItem(queueIndex);
+          } else {
+            resetResultPanel();
+          }
+        }
+        await loadHistory();
+      } catch {
+        setStatus('Could not delete that game.', true);
+      }
+    }
 
 
     // PLAYERS TAB

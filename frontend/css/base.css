@@ -28,7 +28,8 @@ body {
     padding: 48px 20px 80px;
 }
 
-html, body {
+html,
+body {
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -77,4 +78,62 @@ h1 span {
 
 #app-content.visible {
     display: block;
+}
+
+/* ---------------------------------------------------------------------
+   SHARED BUTTON SYSTEM
+   .btn sets shape/sizing only. Color/intent modifiers (.btn-primary,
+   .btn-discard, .btn-delete) add color on top and must NOT redeclare
+   shape — that's what let Discard/Delete/auth buttons drift out of sync
+   before. .btn-pill is the only sanctioned shape override, for icon-style
+   round buttons.
+   ------------------------------------------------------------------- */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    background: transparent;
+    cursor: pointer;
+    text-align: center;
+    transition: background 0.15s ease, border-color 0.15s ease, filter 0.15s ease;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.btn-pill {
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-size: 12px;
+}
+
+.btn-primary {
+    background: var(--amber);
+    color: #241900;
+}
+
+.btn-primary:hover {
+    filter: brightness(1.08);
+}
+
+.btn-discard {
+    border-color: var(--panel-border);
+    color: var(--text-muted);
+}
+
+.btn-delete {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+.btn-delete:hover {
+    background: rgba(255, 93, 93, 0.12);
 }
