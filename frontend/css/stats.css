@@ -89,6 +89,8 @@ body.stats-active .stats-panel {
     right: 0;
     width: var(--stats-drawer-width);
     height: 100vh;
+    height: 100dvh;
+    padding-top: calc(20px + env(safe-area-inset-top, 0px));
     border-radius: 0;
     border-top: none;
     border-bottom: none;
@@ -96,6 +98,7 @@ body.stats-active .stats-panel {
     transform: translateX(100%);
     transition: transform 0.25s ease;
   }
+
   body.stats-active .stats-panel.open {
     transform: translateX(0);
   }
