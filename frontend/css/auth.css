@@ -99,7 +99,7 @@
     border-color: var(--cyan);
 }
 
-.btn-primary {
+.btn-auth-submit {
     width: 100%;
     background: var(--cyan);
     color: #06201c;
@@ -114,11 +114,11 @@
     margin-top: 4px;
 }
 
-.btn-primary:hover {
+.btn-auth-submit:hover {
     filter: brightness(1.08);
 }
 
-.btn-primary:disabled {
+.btn-auth-submit:disabled {
     opacity: 0.6;
     cursor: default;
 }
