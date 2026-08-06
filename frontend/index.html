@@ -152,7 +152,8 @@
         <div class="result-actions">
           <button type="button" class="btn-primary btn-save" id="save-btn">Save game</button>
           <button type="button" class="btn-discard" id="discard-btn">Discard</button>
-          <button type="button" class="btn-delete btn-menu-shape" id="delete-btn" style="display:none;">Delete game</button>
+          <button type="button" class="btn-delete btn-menu-shape" id="delete-btn" style="display:none;">Delete
+            game</button>
         </div>
         <p class="save-error" id="save-error"></p>
       </div>
@@ -1186,6 +1187,18 @@
       return (str || '').replace(/\*/g, '');
     }
 
+    // A frame counts as "open" if it's neither a strike nor a spare - same
+    // rule used by computeStats' per-frame classification.
+    function isFrameOpen(frame) {
+      const upper = (frame || '').toUpperCase();
+      return upper[0] !== 'X' && upper[1] !== '/';
+    }
+
+    function isCleanGame(frameString) {
+      const frames = stripSplitMarkers(frameString).trim().split(/\s+/).filter(Boolean);
+      return frames.length > 0 && frames.every(f => !isFrameOpen(f));
+    }
+
     // Shared per-character color rules for a roll symbol: split marks win
     // (red), then strikes (cyan), then everything else (amber). Used by
     // both the editable frame overlay and the read-only history list so
@@ -1815,12 +1828,32 @@
     }
 
     function applyHistoryFilter() {
-      const q = historySearch.value.trim().toLowerCase();
-      const filtered = q
-        ? allGames.filter(g => g.frame_string.toLowerCase().includes(q))
-        : allGames;
-      renderHistory(filtered);
-      renderStats(filtered, 'Your stats');
+      const rawQuery = historySearch.value.trim().toLowerCase();
+
+      const viewingPlayer = currentView === 'players'
+        && playerDetailView.style.display !== 'none'
+        && currentPlayerGames !== null;
+      const sourceGames = viewingPlayer ? currentPlayerGames : allGames;
+
+      let filtered;
+      if (!rawQuery) {
+        filtered = sourceGames;
+      } else if (rawQuery === 'clean') {
+        filtered = sourceGames.filter(g => isCleanGame(g.frame_string));
+      } else {
+        const q = rawQuery.replace(/\s+/g, '');
+        filtered = sourceGames.filter(g =>
+          g.frame_string.toLowerCase().replace(/\s+/g, '').includes(q)
+        );
+      }
+
+      if (viewingPlayer) {
+        renderPlayerHistory(filtered);
+        renderStats(filtered, `${selectedPlayerUsername}'s stats`);
+      } else {
+        renderHistory(filtered);
+        renderStats(filtered, 'Your stats');
+      }
     }
 
     historySearch.addEventListener('input', applyHistoryFilter);
@@ -2067,8 +2100,10 @@
     const playerDetailHistory = document.getElementById('player-detail-history');
 
     let selectedPlayerUsername = null;
+    let currentPlayerGames = null;
 
     async function loadPlayersList() {
+      currentPlayerGames = null;
       playersListView.style.display = '';
       playerDetailView.style.display = 'none';
       playersListEl.innerHTML = '<p class="empty-history">Loading players…</p>';
@@ -2110,9 +2145,10 @@
         const res = await fetch(`${API_BASE}/api/players/${encodeURIComponent(username)}/games`);
         if (!res.ok) throw new Error();
         const data = await res.json();
-        renderPlayerHistory(data.games);
-        renderStats(data.games, `${username}'s stats`);
+        currentPlayerGames = data.games;
+        applyHistoryFilter();
       } catch {
+        currentPlayerGames = null;
         playerDetailHistory.innerHTML = '<p class="empty-history">Could not load this player\'s games.</p>';
       }
     }
@@ -2143,6 +2179,7 @@
 
     playerDetailBack.addEventListener('click', () => {
       selectedPlayerUsername = null;
+      currentPlayerGames = null;
       setStatsPanelVisible(false);
       loadPlayersList();
     });
@@ -2208,6 +2245,8 @@
         return {
           count: 0, average: null, high: null, strikes: 0, spares: 0,
           spareConversionRate: null, splitRate: null, splitConversionRate: null,
+          strikeRate: null, openFrames: 0, openFrameRate: null,
+          longestStrikeStreak: null, cleanGames: 0,
         };
       }
 
@@ -2216,6 +2255,12 @@
       let high = -Infinity;
       let strikes = 0;
       let spares = 0;
+
+      let totalFrames = 0;
+      let strikeFrames = 0;
+      let openFrames = 0;
+      let cleanGames = 0;
+      let longestStrikeStreak = 0;
 
       // "Opportunity" = any first-ball roll at a fresh, full rack of pins -
       // i.e. any point a split could physically occur. For frames 1-9 that's
@@ -2243,6 +2288,38 @@
             if (ch === '/') spares++;
           }
         });
+
+        // Per-frame classification: strike / spare / open. Frame 10 is
+        // judged by its first roll only, same convention used for the
+        // strikes/spares counters above and for spareOpportunities below.
+        let gameHasOpenFrame = false;
+        frames.forEach(frame => {
+          totalFrames++;
+          const upper = frame.toUpperCase();
+          if (upper[0] === 'X') {
+            strikeFrames++;
+          } else if (upper[1] === '/') {
+            // spare - not open
+          } else {
+            openFrames++;
+            gameHasOpenFrame = true;
+          }
+        });
+        if (frames.length && !gameHasOpenFrame) cleanGames++;
+
+        // Longest run of consecutive strikes. 'X' only ever appears for an
+        // actual strike roll - whether it's a normal frame or a frame-10
+        // bonus roll - so a flat scan across frame boundaries is safe and
+        // correctly captures streaks that run into/through the 10th.
+        let currentStreak = 0;
+        for (const ch of frames.join('')) {
+          if (ch === 'X') {
+            currentStreak++;
+            if (currentStreak > longestStrikeStreak) longestStrikeStreak = currentStreak;
+          } else {
+            currentStreak = 0;
+          }
+        }
 
         // Split/spare-conversion analysis needs the *unstripped* frame_string,
         // since that's where the split markers ('*') live.
@@ -2305,6 +2382,11 @@
         splitConversionRate: splitsLeft
           ? Math.round((splitsConverted / splitsLeft) * 100)
           : null,
+        strikeRate: totalFrames ? Math.round((strikeFrames / totalFrames) * 100) : null,
+        openFrames,
+        openFrameRate: totalFrames ? Math.round((openFrames / totalFrames) * 100) : null,
+        longestStrikeStreak: totalFrames ? longestStrikeStreak : null,
+        cleanGames,
       };
     }
 
@@ -2326,8 +2408,13 @@
         <div class="stat-row"><span class="stat-label">Average</span><span class="stat-value">${stats.average ?? '—'}</span></div>
         <div class="stat-row"><span class="stat-label">High game</span><span class="stat-value">${stats.high ?? '—'}</span></div>
         <div class="stat-row"><span class="stat-label">Strikes</span><span class="stat-value">${stats.strikes}</span></div>
+        <div class="stat-row"><span class="stat-label">Strike rate</span><span class="stat-value">${stats.strikeRate ?? '—'}%</span></div>
         <div class="stat-row"><span class="stat-label">Spares</span><span class="stat-value">${stats.spares}</span></div>
         <div class="stat-row"><span class="stat-label">Spare conversion</span><span class="stat-value">${stats.spareConversionRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Open frames</span><span class="stat-value">${stats.openFrames}</span></div>
+        <div class="stat-row"><span class="stat-label">Open frame rate</span><span class="stat-value">${stats.openFrameRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Longest strike streak</span><span class="stat-value">${stats.longestStrikeStreak ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Clean games</span><span class="stat-value">${stats.cleanGames}</span></div>
         <div class="stat-row"><span class="stat-label">Split rate</span><span class="stat-value">${stats.splitRate ?? '—'}%</span></div>
         <div class="stat-row"><span class="stat-label">Split conversion</span><span class="stat-value">${stats.splitConversionRate ?? '—'}%</span></div>
         `;
