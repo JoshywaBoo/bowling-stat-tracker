@@ -91,7 +91,6 @@
     padding: 11px 12px;
     color: var(--text);
     font-family: inherit;
-    font-size: 14px;
 }
 
 .field input:focus {
