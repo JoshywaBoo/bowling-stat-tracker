@@ -76,7 +76,6 @@ input[type="file"] {
     border: 1px solid var(--panel-border);
     background: #0d1114;
     cursor: zoom-in;
-    touch-action: none;
 }
 
 .thumb-zoom-wrap.zoomed {
@@ -103,4 +102,35 @@ input[type="file"] {
     color: var(--text-muted);
     text-align: center;
     word-break: break-all;
+}
+
+.thumb-zoom-reset {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(13, 17, 20, 0.85);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    cursor: pointer;
+    z-index: 5;
+}
+
+.thumb-zoom-reset svg {
+    width: 16px;
+    height: 16px;
+}
+
+.thumb-zoom-reset:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+}
+
+.thumb-zoom-wrap.zoomed .thumb-zoom-reset {
+    display: flex;
 }

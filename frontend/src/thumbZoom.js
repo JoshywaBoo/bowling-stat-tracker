@@ -14,6 +14,7 @@
 import { resultThumb } from './main.js';
 
 const thumbZoomWrap = document.getElementById('thumb-zoom-wrap');
+const thumbZoomResetBtn = document.getElementById('thumb-zoom-reset');
 
 const ZOOM_MIN = 1;
 const ZOOM_MAX = 4;
@@ -34,6 +35,7 @@ let thumbDragMoved = false;
 function applyThumbTransform() {
     resultThumb.style.transform = `translate(${thumbX}px, ${thumbY}px) scale(${thumbScale})`;
     thumbZoomWrap.classList.toggle('zoomed', thumbScale > 1);
+    thumbZoomWrap.style.touchAction = thumbScale > 1 ? 'none' : 'pan-y';
 }
 
 function clampThumbPan() {
@@ -50,6 +52,11 @@ export function resetThumbZoom() {
     thumbY = 0;
     applyThumbTransform();
 }
+
+thumbZoomResetBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    resetThumbZoom();
+});
 
 // Keeps (cursorX, cursorY) - measured relative to the wrap's top-left -
 // visually fixed in place while scale changes from thumbScale to newScale.
@@ -84,6 +91,7 @@ thumbZoomWrap.addEventListener('wheel', (e) => {
 
 thumbZoomWrap.addEventListener('mousedown', (e) => {
     if (!resultThumb.getAttribute('src')) return;
+    if (e.target.closest('.thumb-zoom-reset')) return;
     thumbMouseDownPos = { x: e.clientX, y: e.clientY };
     thumbDragMoved = false;
 
@@ -132,4 +140,101 @@ window.addEventListener('mouseup', (e) => {
     }
 
     thumbMouseDownPos = null;
+});
+
+// ---- touch support: pinch to zoom, one-finger pan, tap to zoom ----
+let touchStartDistance = null;
+let touchStartScale = 1;
+let touchPanStartX = 0, touchPanStartY = 0;
+let touchOriginX = 0, touchOriginY = 0;
+let touchTapPos = null;
+let touchMoved = false;
+
+function getTouchDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+}
+
+function getTouchMidpoint(touches, wrapRect) {
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2 - wrapRect.left,
+        y: (touches[0].clientY + touches[1].clientY) / 2 - wrapRect.top,
+    };
+}
+
+thumbZoomWrap.addEventListener('touchstart', (e) => {
+    if (!resultThumb.getAttribute('src')) return;
+    if (e.target.closest('.thumb-zoom-reset')) return;
+
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        touchStartDistance = getTouchDistance(e.touches);
+        touchStartScale = thumbScale;
+        touchTapPos = null;
+        touchMoved = true;
+    } else if (e.touches.length === 1) {
+        touchTapPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        touchMoved = false;
+        if (thumbScale > 1) {
+            touchPanStartX = e.touches[0].clientX;
+            touchPanStartY = e.touches[0].clientY;
+            touchOriginX = thumbX;
+            touchOriginY = thumbY;
+        }
+    }
+}, { passive: false });
+
+thumbZoomWrap.addEventListener('touchmove', (e) => {
+    if (!resultThumb.getAttribute('src')) return;
+
+    if (e.touches.length === 2 && touchStartDistance) {
+        e.preventDefault();
+        const wrapRect = thumbZoomWrap.getBoundingClientRect();
+        const newDistance = getTouchDistance(e.touches);
+        const midpoint = getTouchMidpoint(e.touches, wrapRect);
+        const newScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, touchStartScale * (newDistance / touchStartDistance)));
+        zoomTowardPoint(midpoint.x, midpoint.y, newScale);
+    } else if (e.touches.length === 1 && thumbScale > 1) {
+        e.preventDefault();
+        const dx = e.touches[0].clientX - touchPanStartX;
+        const dy = e.touches[0].clientY - touchPanStartY;
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) touchMoved = true;
+        thumbX = touchOriginX + dx;
+        thumbY = touchOriginY + dy;
+        clampThumbPan();
+        applyThumbTransform();
+    } else if (e.touches.length === 1 && touchTapPos) {
+        const dx = e.touches[0].clientX - touchTapPos.x;
+        const dy = e.touches[0].clientY - touchTapPos.y;
+        if (Math.hypot(dx, dy) > DRAG_THRESHOLD_PX) touchMoved = true;
+    }
+}, { passive: false });
+
+thumbZoomWrap.addEventListener('touchend', (e) => {
+    if (!resultThumb.getAttribute('src')) return;
+
+    if (e.touches.length === 0) {
+        if (touchStartDistance) {
+            touchStartDistance = null;
+        } else if (touchTapPos && !touchMoved) {
+            const wrapRect = thumbZoomWrap.getBoundingClientRect();
+            const tapX = touchTapPos.x - wrapRect.left;
+            const tapY = touchTapPos.y - wrapRect.top;
+            if (thumbScale > 1) {
+                resetThumbZoom();
+            } else {
+                zoomTowardPoint(tapX, tapY, ZOOM_CLICK_SCALE);
+            }
+        }
+        touchTapPos = null;
+        touchMoved = false;
+    } else if (e.touches.length === 1) {
+        // Went from two fingers to one — reset pinch tracking, allow panning to continue.
+        touchStartDistance = null;
+        touchPanStartX = e.touches[0].clientX;
+        touchPanStartY = e.touches[0].clientY;
+        touchOriginX = thumbX;
+        touchOriginY = thumbY;
+    }
 });
