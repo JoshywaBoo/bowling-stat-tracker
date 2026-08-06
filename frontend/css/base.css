@@ -134,3 +134,9 @@ h1 span {
 .btn-delete:hover {
     background: rgba(255, 93, 93, 0.12);
 }
+
+input,
+select,
+textarea {
+    font-size: 16px;
+}
