@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
   <link rel="icon" href="/favicon.png" />
   <title>Bowling Stat Tracker</title>
 
@@ -145,6 +145,11 @@
         <div class="thumb-row">
           <div class="thumb-zoom-wrap" id="thumb-zoom-wrap">
             <img id="result-thumb" alt="Uploaded scoreboard" />
+            <button type="button" class="thumb-zoom-reset" id="thumb-zoom-reset" aria-label="Reset zoom">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
           </div>
           <p class="thumb-filename" id="thumb-filename"></p>
         </div>
