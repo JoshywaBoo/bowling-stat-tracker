@@ -3,9 +3,12 @@
 import { resetThumbZoom } from './thumbZoom.js';
 import { renderStats, setStatsPanelVisible } from './stats.js';
 import { setAuthMode, checkSession } from './auth.js';
+import { Capacitor } from '@capacitor/core';
 
 // CONFIG — constants used everywhere below 
-export const API_BASE = "";
+export const API_BASE = Capacitor.isNativePlatform()
+  ? "https://bowling-stat-tracker-backend.onrender.com"
+  : "";
 
 const navAccountEl = document.querySelector('.nav-account'); // currently unreferenced elsewhere, kept for parity
 

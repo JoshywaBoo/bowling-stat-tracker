@@ -51,6 +51,8 @@ app.add_middleware(
     allow_origins=[
         "https://bowling-stat-tracker.vercel.app",
         "http://localhost:5173",
+        "capacitor://localhost",
+        "http://localhost",
     ],
     allow_credentials=True,
     allow_methods=["*"],
