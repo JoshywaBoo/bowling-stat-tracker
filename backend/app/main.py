@@ -493,3 +493,87 @@ def delete_game(game_id: int, user: dict = Depends(auth.get_current_user)):
         execute(conn, "DELETE FROM games WHERE id = ?", (game_id,))
 
     return {"ok": True}
+
+@app.get("/api/highlights/recent-games")
+def recent_games_for_highlights(limit: int = 150):
+    with get_db() as conn:
+        rows = execute(
+            conn,
+            """
+            SELECT games.id, games.player_name, games.frame_string,
+                   games.created_at, users.username
+            FROM games
+            JOIN users ON users.id = games.user_id
+            WHERE users.email_verified = TRUE
+            ORDER BY games.created_at DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+
+        game_ids = [r["id"] for r in rows]
+        reaction_rows = execute(
+            conn,
+            f"SELECT game_id, emoji, user_id FROM reactions WHERE game_id IN ({','.join('?' * len(game_ids))})",
+            game_ids,
+        ).fetchall() if game_ids else []
+
+    reactions_by_game = {}
+    for r in reaction_rows:
+        reactions_by_game.setdefault(r["game_id"], []).append(r)
+
+    return [
+        {
+            "id": row["id"],
+            "username": row["username"],
+            "frame_string": row["frame_string"],
+            "created_at": row["created_at"],
+            "reactions": summarize_reactions(reactions_by_game.get(row["id"], [])),
+        }
+        for row in rows
+    ]
+
+def summarize_reactions(rows, viewer_id=None):
+    counts = {}
+    mine = []
+    for r in rows:
+        counts[r["emoji"]] = counts.get(r["emoji"], 0) + 1
+        if viewer_id and r["user_id"] == viewer_id:
+            mine.append(r["emoji"])
+    return {"counts": counts, "mine": mine}
+
+class ReactionRequest(BaseModel):
+    emoji: str
+
+ALLOWED_EMOJIS = {"👍", "🔥", "😂", "🎳", "👏", "😮", "💀"}
+
+@app.post("/api/games/{game_id}/reactions")
+def toggle_reaction(
+    game_id: int,
+    payload: ReactionRequest,
+    user: dict = Depends(auth.get_current_user),
+):
+    if payload.emoji not in ALLOWED_EMOJIS:
+        raise HTTPException(400, "Unsupported emoji")
+
+    with get_db() as conn:
+        existing = execute(
+            conn,
+            "SELECT id FROM reactions WHERE game_id = ? AND user_id = ? AND emoji = ?",
+            (game_id, user["id"], payload.emoji),
+        ).fetchone()
+
+        if existing:
+            execute(conn, "DELETE FROM reactions WHERE id = ?", (existing["id"],))
+        else:
+            execute(
+                conn,
+                "INSERT INTO reactions (game_id, user_id, emoji, created_at) VALUES (?, ?, ?, ?)",
+                (game_id, user["id"], payload.emoji, datetime.now(timezone.utc).isoformat()),
+            )
+
+        rows = execute(
+            conn, "SELECT emoji, user_id FROM reactions WHERE game_id = ?", (game_id,)
+        ).fetchall()
+
+    return summarize_reactions(rows, viewer_id=user["id"])

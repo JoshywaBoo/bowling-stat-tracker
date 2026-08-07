@@ -4,6 +4,7 @@ import { resetThumbZoom } from './thumbZoom.js';
 import { renderStats, setStatsPanelVisible } from './stats.js';
 import { setAuthMode, checkSession } from './auth.js';
 import './statsAdvanced.js';
+import { loadHighlights } from './highlights.js';
 import { Capacitor } from '@capacitor/core';
 
 // CONFIG — constants used everywhere below 
@@ -82,3 +83,4 @@ if (statsAdvancedOverlayEl) {
 // INIT
 setAuthMode('login');
 checkSession();
+loadHighlights();

@@ -7,12 +7,25 @@
   position: fixed;
   top: calc(var(--nav-height) + 24px);
   right: 24px;
-  width: 220px;
+  width: 240px;
+  max-height: calc(100vh - var(--nav-height) - 48px);
+  overflow-y: auto;
   background: var(--panel);
   border: 1px solid var(--panel-border);
   border-radius: 14px;
   padding: 20px;
   z-index: 15;
+
+  /* hide the scrollbar visually - content still scrolls (wheel/touch/keyboard) */
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE/legacy Edge */
+}
+
+.stats-panel::-webkit-scrollbar {
+  display: none;
+  /* Chrome/Safari/new Edge */
 }
 
 body.stats-active .stats-panel,
@@ -108,12 +121,13 @@ body.stats-active .stats-panel,
 
 @media (max-width: 1100px) {
   .stats-panel {
-    top: 0;
+    top: var(--nav-height);
     right: 0;
     width: var(--stats-drawer-width);
-    height: 100vh;
-    height: 100dvh;
-    padding-top: calc(20px + env(safe-area-inset-top, 0px));
+    height: calc(100vh - var(--nav-height));
+    height: calc(100dvh - var(--nav-height));
+    max-height: none;
+    padding-top: 20px;
     border-radius: 0;
     border-top: none;
     border-bottom: none;

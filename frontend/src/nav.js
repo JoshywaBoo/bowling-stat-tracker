@@ -25,6 +25,7 @@ export let isLoggedIn = false;
 
 export function setIsLoggedIn(value) {
     isLoggedIn = value;
+    document.body.classList.toggle('logged-in', value);
 }
 
 export function setNavView(view) {
