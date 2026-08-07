@@ -1,9 +1,49 @@
+:root {
+    --nav-height: 70px;
+    /* fallback until JS measures the real value */
+}
+
 .nav-bar {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: calc(14px + env(safe-area-inset-top, 0px)) 20px 14px;
-    margin: -48px -20px 40px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 20px 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    transition: padding 0.25s ease, max-width 0.25s ease;
+}
+
+body.scrolled .nav-bar {
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 20px 8px;
+    max-width: var(--content-max-width, 680px);
+}
+
+.nav-bar::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-height);
+    background: var(--void);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.25s ease;
+}
+
+body.scrolled .nav-bar::before {
+    opacity: 1;
+}
+
+main {
+    padding-top: var(--nav-height);
 }
 
 .nav-search-form {
@@ -15,7 +55,7 @@
     background: #0d1114;
     border: 1px solid var(--panel-border);
     border-radius: 8px;
-    padding: 9px 12px;
+    padding: 5px 12px;
     color: var(--text);
     font-family: inherit;
 }
@@ -54,6 +94,10 @@
     color: var(--text);
 }
 
+.nav-links .nav-link-btn:first-child {
+    padding-left: 0;
+}
+
 .nav-login-btn {
     background: none;
     border: none;
@@ -70,8 +114,8 @@
 }
 
 .nav-avatar {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
     background: var(--amber-dim);
     color: var(--amber);
@@ -79,8 +123,15 @@
     align-items: center;
     justify-content: center;
     font-family: 'VT323', monospace;
-    font-size: 18px;
+    font-size: 22px;
     border: 1px solid var(--amber-dim);
+    transition: width 0.25s ease, height 0.25s ease, font-size 0.25s ease;
+}
+
+body.scrolled .nav-avatar {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
 }
 
 .nav-dropdown {
