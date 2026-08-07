@@ -9,11 +9,14 @@ import { calculateBowlingScore, isCleanGame, stripSplitMarkers, frameStringToHtm
 import { formatTime } from './format.js';
 import { API_BASE } from './main.js';
 import { showLoggedOut } from './auth.js';
+import { closeStatsPanel } from './stats.js';
 
 const highlightsPanel = document.getElementById('highlights-panel');
 const highlightsListEl = document.getElementById('highlights-list');
 const highlightsToggle = document.getElementById('highlights-toggle');
 const emojiPickerEl = document.getElementById('emoji-picker');
+
+let openPickerBtn = null;
 
 // Higher = more "interesting". Tune the weights to taste.
 export function interestingnessScore(frameString) {
@@ -137,9 +140,18 @@ export async function loadHighlights() {
 
 // PANEL TOGGLE — same open/close mechanics as the stats panel (stats.js),
 // mirrored to the left-side drawer.
+
+// Exported so other panels (stats) can close this one when they open,
+// on mobile where both are drawers that would otherwise overlap.
+export function closeHighlightsPanel() {
+    highlightsPanel.classList.remove('open');
+    highlightsToggle.classList.remove('panel-open');
+}
+
 highlightsToggle.addEventListener('click', () => {
     const open = highlightsPanel.classList.toggle('open');
     highlightsToggle.classList.toggle('panel-open', open);
+    if (open) closeStatsPanel(); // mobile: only one drawer open at a time
 });
 
 // EMOJI PICKER
@@ -155,10 +167,12 @@ function openEmojiPicker(button, gameId) {
     emojiPickerEl.style.left = `${rect.right + 8}px`;
     emojiPickerEl.style.display = 'flex';
     emojiPickerEl.dataset.gameId = gameId;
+    openPickerBtn = button;
 }
 
 function closeEmojiPicker() {
     emojiPickerEl.style.display = 'none';
+    openPickerBtn = null;
 }
 
 // Shared by both the emoji picker and clicking an existing pill directly -
@@ -179,8 +193,12 @@ async function toggleReaction(gameId, emoji) {
 highlightsListEl.addEventListener('click', (e) => {
     const btn = e.target.closest('.btn-react');
     if (!btn) return;
-    e.stopPropagation(); // don't let this bubble into the doc listener that closes the picker
-    openEmojiPicker(btn, Number(btn.dataset.gameId));
+    e.stopPropagation();
+    if (btn === openPickerBtn) {
+        closeEmojiPicker();
+    } else {
+        openEmojiPicker(btn, Number(btn.dataset.gameId));
+    }
 });
 
 // Click an existing pill to toggle that reaction directly, without going

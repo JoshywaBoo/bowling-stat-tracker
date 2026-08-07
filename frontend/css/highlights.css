@@ -129,7 +129,7 @@ body:not(.logged-in) .btn-react {
     border: 1px solid var(--panel-border);
     border-radius: 10px;
     padding: 6px;
-    z-index: 30;
+    z-index: 60;
 }
 
 .emoji-option {
