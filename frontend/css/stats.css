@@ -2,12 +2,11 @@
   --stats-drawer-width: 260px;
 }
 
-/* Desktop: fixed panel docked to the right of the centered <main> column */
 .stats-panel {
-  display: none; /* shown only when body has .stats-active */
+  display: none;
   position: fixed;
-  top: 48px;
-  right: 48px;
+  top: calc(var(--nav-height) + 24px);
+  right: 24px;
   width: 220px;
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -15,7 +14,9 @@
   padding: 20px;
   z-index: 15;
 }
-body.stats-active .stats-panel {
+
+body.stats-active .stats-panel,
+#stats-advanced-overlay .stats-panel {
   display: block;
 }
 
@@ -28,6 +29,23 @@ body.stats-active .stats-panel {
   margin: 0 0 16px;
 }
 
+.stats-advanced-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 0 16px;
+  margin-top: -8px;
+  cursor: pointer;
+}
+
+.stats-advanced-btn:hover {
+  text-decoration: underline;
+}
+
 .stat-row {
   display: flex;
   justify-content: space-between;
@@ -35,7 +53,10 @@ body.stats-active .stats-panel {
   padding: 10px 0;
   border-bottom: 1px solid var(--panel-border);
 }
-.stat-row:last-child { border-bottom: none; }
+
+.stat-row:last-child {
+  border-bottom: none;
+}
 
 .stat-label {
   font-size: 12px;
@@ -75,10 +96,12 @@ body.stats-active .stats-panel {
   border-radius: 6px;
   cursor: pointer;
 }
+
 .stats-range-btn.active {
   background: var(--amber-dim);
   color: var(--amber);
 }
+
 .stats-range-btn:hover:not(.active) {
   color: var(--text);
 }
@@ -99,11 +122,13 @@ body.stats-active .stats-panel {
     transition: transform 0.25s ease;
   }
 
-  body.stats-active .stats-panel.open {
+  body.stats-active .stats-panel.open,
+  #stats-advanced-overlay .stats-panel.open {
     transform: translateX(0);
   }
 
-  body.stats-active .stats-toggle {
+  body.stats-active .stats-toggle,
+  #stats-advanced-overlay .stats-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -122,14 +147,18 @@ body.stats-active .stats-panel {
     z-index: 20;
     transition: transform 0.25s ease;
   }
-  body.stats-active .stats-toggle.panel-open {
+
+  body.stats-active .stats-toggle.panel-open,
+  #stats-advanced-overlay .stats-toggle.panel-open {
     transform: translateY(-50%) translateX(calc(-1 * var(--stats-drawer-width)));
   }
+
   .stats-toggle svg {
     width: 16px;
     height: 16px;
     transition: transform 0.25s ease;
   }
+
   .stats-toggle.panel-open svg {
     transform: rotate(180deg);
   }

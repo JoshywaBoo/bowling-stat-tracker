@@ -3,7 +3,8 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover, minimum-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
   <link rel="icon" href="/favicon.png" />
   <title>Bowling Stat Tracker</title>
 
@@ -16,6 +17,7 @@
   <link rel="stylesheet" href="css/players.css" />
   <link rel="stylesheet" href="css/history.css" />
   <link rel="stylesheet" href="css/stats.css" />
+  <link rel="stylesheet" href="css/statsAdvanced.css" />
 
 </head>
 
@@ -123,7 +125,6 @@
       <label class="dropzone" id="dropzone" for="file-input">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
           <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
         <p class="primary">Drop a scoreboard photo, or click to choose one</p>
         <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
@@ -146,9 +147,10 @@
           <div class="thumb-zoom-wrap" id="thumb-zoom-wrap">
             <img id="result-thumb" alt="Uploaded scoreboard" />
             <button type="button" class="thumb-zoom-reset" id="thumb-zoom-reset" aria-label="Reset zoom">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 3H5a2 2 0 0 0-2 2v4M15 3h4a2 2 0 0 1 2 2v4M9 21H5a2 2 0 0 1-2-2v-4M15 21h4a2 2 0 0 0 2-2v-4"
+                  stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
             </button>
           </div>
           <p class="thumb-filename" id="thumb-filename"></p>
@@ -174,7 +176,7 @@
       </div>
 
       <div id="player-detail-view" style="display:none;">
-        <button type="button" class="link-btn" id="player-detail-back">Back to players</button>
+        <button type="button" class="link-btn" id="player-detail-back">&larr; Back</button>
         <h2 id="player-detail-name"></h2>
         <div id="player-detail-history"></div>
       </div>
@@ -189,6 +191,7 @@
 
   <aside class="stats-panel" id="stats-panel">
     <h2 id="stats-panel-title">Stats</h2>
+    <button type="button" class="stats-advanced-btn" id="stats-advanced-btn">Advanced stats</button>
     <div class="stats-range-toggle" id="stats-range-toggle">
       <button type="button" class="stats-range-btn active" data-range="all">All</button>
       <button type="button" class="stats-range-btn" data-range="20">Last 20</button>
@@ -209,6 +212,29 @@
   <div class="history-item-dropdown" id="history-item-dropdown" style="display:none;">
     <button type="button" class="dropdown-item" id="history-dropdown-edit">Edit</button>
     <button type="button" class="dropdown-item" id="history-dropdown-delete">Delete</button>
+  </div>
+
+  <div class="stats-advanced-overlay" id="stats-advanced-overlay" style="display:none;">
+    <div class="stats-advanced-panel">
+      <button type="button" class="link-btn" id="stats-advanced-back">&larr; Back</button>
+      <h2 id="stats-advanced-title"></h2>
+      <div id="stats-advanced-body"></div>
+    </div>
+
+    <button type="button" class="stats-advanced-toggle stats-toggle" id="stats-advanced-toggle"
+      aria-label="Toggle stats panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    <aside class="stats-advanced-side stats-panel" id="stats-advanced-side">
+      <div class="stats-range-toggle" id="stats-advanced-range-toggle">
+        <button type="button" class="stats-range-btn active" data-range="all">All</button>
+        <button type="button" class="stats-range-btn" data-range="20">Last 20</button>
+      </div>
+      <div id="stats-advanced-summary"></div>
+    </aside>
   </div>
 
   <script type="module" src="/src/main.js"></script>

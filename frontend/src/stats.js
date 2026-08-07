@@ -28,6 +28,14 @@ statsToggle.addEventListener('click', () => {
     statsToggle.classList.toggle('panel-open', open);
 });
 
+// Lets other modules (the advanced stats page) open on whatever the mini
+// panel is currently showing, without needing their own fetch. Returns the
+// full untrimmed list - the advanced page does its own All/Last 20 slicing
+// with its own independent toggle.
+export function getCurrentStatsContext() {
+    return { games: lastStatsGames, title: statsPanelTitle.textContent };
+}
+
 export function setStatsPanelVisible(visible) {
     document.body.classList.toggle('stats-active', visible);
     if (!visible) {
@@ -36,11 +44,31 @@ export function setStatsPanelVisible(visible) {
     }
 }
 
+// Shared stat-row markup, reused by both the mini panel here and the
+// full advanced stats page (statsAdvanced.js) so the two never drift apart.
+export function statsRowsHtml(stats) {
+    return `
+        <div class="stat-row"><span class="stat-label">Games</span><span class="stat-value">${stats.count}</span></div>
+        <div class="stat-row"><span class="stat-label">Average</span><span class="stat-value">${stats.average ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">High game</span><span class="stat-value">${stats.high ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Strikes</span><span class="stat-value">${stats.strikes}</span></div>
+        <div class="stat-row"><span class="stat-label">Strike rate</span><span class="stat-value">${stats.strikeRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Spares</span><span class="stat-value">${stats.spares}</span></div>
+        <div class="stat-row"><span class="stat-label">Spare conversion</span><span class="stat-value">${stats.spareConversionRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Open frames</span><span class="stat-value">${stats.openFrames}</span></div>
+        <div class="stat-row"><span class="stat-label">Open frame rate</span><span class="stat-value">${stats.openFrameRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Longest strike streak</span><span class="stat-value">${stats.longestStrikeStreak ?? '—'}</span></div>
+        <div class="stat-row"><span class="stat-label">Clean games</span><span class="stat-value">${stats.cleanGames}</span></div>
+        <div class="stat-row"><span class="stat-label">Split rate</span><span class="stat-value">${stats.splitRate ?? '—'}%</span></div>
+        <div class="stat-row"><span class="stat-label">Split conversion</span><span class="stat-value">${stats.splitConversionRate ?? '—'}%</span></div>
+    `;
+}
+
 // Rough strike/spare counts scan every frame character directly (including
 // frame 10's bonus rolls) - counts literal 'X'/'/' occurrences rather than
 // re-deriving strict per-frame bowling semantics, since this is purely
 // informational, not scored.
-function computeStats(games) {
+export function computeStats(games) {
     if (!games.length) {
         return {
             count: 0, average: null, high: null, strikes: 0, spares: 0,
@@ -62,15 +90,10 @@ function computeStats(games) {
     let cleanGames = 0;
     let longestStrikeStreak = 0;
 
-    // "Opportunity" = any first-ball roll at a fresh, full rack of pins -
-    // i.e. any point a split could physically occur. For frames 1-9 that's
-    // just roll 1 of the frame (unless it's a strike, which leaves no pins
-    // to split). Frame 10 can contain several such fresh-rack rolls, since
-    // a strike or spare there resets the pins for the next roll.
     let spareOpportunities = 0;
     let spareConversions = 0;
     let splitsLeft = 0;
-    let splitsConverted = 0; // subset of splitsLeft that were then picked up
+    let splitsConverted = 0;
 
     games.forEach(g => {
         const clean = stripSplitMarkers(g.frame_string);
@@ -89,9 +112,6 @@ function computeStats(games) {
             }
         });
 
-        // Per-frame classification: strike / spare / open. Frame 10 is
-        // judged by its first roll only, same convention used for the
-        // strikes/spares counters above and for spareOpportunities below.
         let gameHasOpenFrame = false;
         frames.forEach(frame => {
             totalFrames++;
@@ -107,10 +127,6 @@ function computeStats(games) {
         });
         if (frames.length && !gameHasOpenFrame) cleanGames++;
 
-        // Longest run of consecutive strikes. 'X' only ever appears for an
-        // actual strike roll - whether it's a normal frame or a frame-10
-        // bonus roll - so a flat scan across frame boundaries is safe and
-        // correctly captures streaks that run into/through the 10th.
         let currentStreak = 0;
         for (const ch of frames.join('')) {
             if (ch === 'X') {
@@ -121,8 +137,6 @@ function computeStats(games) {
             }
         }
 
-        // Split/spare-conversion analysis needs the *unstripped* frame_string,
-        // since that's where the split markers ('*') live.
         const rawFrames = (g.frame_string || '').trim().length
             ? g.frame_string.trim().split(/\s+/)
             : [];
@@ -133,8 +147,7 @@ function computeStats(games) {
             const isFrame10 = frameIdx === 9;
 
             if (!isFrame10) {
-                // Standard frame: only roll 1 is a fresh-rack opportunity.
-                if (chars[0].toUpperCase() === 'X') return; // strike - no pins left to split
+                if (chars[0].toUpperCase() === 'X') return;
                 spareOpportunities++;
                 const wasSplit = marks.includes(0);
                 if (wasSplit) splitsLeft++;
@@ -145,9 +158,6 @@ function computeStats(games) {
                 return;
             }
 
-            // Frame 10: walk each roll, tracking whether the PREVIOUS roll in
-            // this frame reset the rack (strike or spare) - roll 0 always does
-            // (fresh frame), so it's always an opportunity.
             let prevReset = true;
             for (let i = 0; i < chars.length; i++) {
                 const ch = chars[i].toUpperCase();
@@ -192,9 +202,8 @@ function computeStats(games) {
 
 export function renderStats(games, title) {
     statsPanelTitle.textContent = title || 'Stats';
-    lastStatsGames = games; // keep full list so range can re-slice without re-fetching
+    lastStatsGames = games;
 
-    // assumes game list is ordered newest-first
     const scoped = statsRange === '20' ? games.slice(0, 20) : games;
     const stats = computeStats(scoped);
 
@@ -203,19 +212,5 @@ export function renderStats(games, title) {
         return;
     }
 
-    statsContent.innerHTML = `
-        <div class="stat-row"><span class="stat-label">Games</span><span class="stat-value">${stats.count}</span></div>
-        <div class="stat-row"><span class="stat-label">Average</span><span class="stat-value">${stats.average ?? '—'}</span></div>
-        <div class="stat-row"><span class="stat-label">High game</span><span class="stat-value">${stats.high ?? '—'}</span></div>
-        <div class="stat-row"><span class="stat-label">Strikes</span><span class="stat-value">${stats.strikes}</span></div>
-        <div class="stat-row"><span class="stat-label">Strike rate</span><span class="stat-value">${stats.strikeRate ?? '—'}%</span></div>
-        <div class="stat-row"><span class="stat-label">Spares</span><span class="stat-value">${stats.spares}</span></div>
-        <div class="stat-row"><span class="stat-label">Spare conversion</span><span class="stat-value">${stats.spareConversionRate ?? '—'}%</span></div>
-        <div class="stat-row"><span class="stat-label">Open frames</span><span class="stat-value">${stats.openFrames}</span></div>
-        <div class="stat-row"><span class="stat-label">Open frame rate</span><span class="stat-value">${stats.openFrameRate ?? '—'}%</span></div>
-        <div class="stat-row"><span class="stat-label">Longest strike streak</span><span class="stat-value">${stats.longestStrikeStreak ?? '—'}</span></div>
-        <div class="stat-row"><span class="stat-label">Clean games</span><span class="stat-value">${stats.cleanGames}</span></div>
-        <div class="stat-row"><span class="stat-label">Split rate</span><span class="stat-value">${stats.splitRate ?? '—'}%</span></div>
-        <div class="stat-row"><span class="stat-label">Split conversion</span><span class="stat-value">${stats.splitConversionRate ?? '—'}%</span></div>
-        `;
+    statsContent.innerHTML = statsRowsHtml(stats);
 }
