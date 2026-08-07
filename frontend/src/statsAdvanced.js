@@ -9,6 +9,7 @@
 import { computeStats, getCurrentStatsContext, statsRowsHtml, setStatsPanelVisible } from './stats.js';
 import { stripSplitMarkers, calculateBowlingScore } from './frames.js';
 import { formatTime } from './format.js';
+import { closeHighlightsPanel } from './highlights.js';
 import { Chart } from 'chart.js/auto';
 import { Tooltip } from 'chart.js';
 
@@ -108,7 +109,7 @@ function monthYearPickerHtml(games) {
 }
 
 function formatDateTwoLine(dateStr) {
-    return formatTime(dateStr).replace(/, /, ',<br>');
+    return formatTime(dateStr).replace(/, | at /, ',<br>');
 }
 
 function render() {
@@ -426,9 +427,18 @@ function scoreChartConfig(games) {
     };
 }
 
+// Exported so highlights.js can close this panel when it opens, on mobile
+// where both are drawers that would otherwise overlap (mirrors the
+// stats.js <-> highlights.js relationship for the mini panel).
+export function closeAdvancedSidePanel() {
+    sideEl.classList.remove('open');
+    sideToggleBtn.classList.remove('panel-open');
+}
+
 sideToggleBtn.addEventListener('click', () => {
-    sideEl.classList.toggle('open');
-    sideToggleBtn.classList.toggle('panel-open');
+    const open = sideEl.classList.toggle('open');
+    sideToggleBtn.classList.toggle('panel-open', open);
+    if (open) closeHighlightsPanel(); // mobile: only one drawer open at a time
 });
 
 openBtn.addEventListener('click', () => {

@@ -10,6 +10,7 @@ import { formatTime } from './format.js';
 import { API_BASE } from './main.js';
 import { showLoggedOut } from './auth.js';
 import { closeStatsPanel } from './stats.js';
+import { closeAdvancedSidePanel } from './statsAdvanced.js';
 
 const highlightsPanel = document.getElementById('highlights-panel');
 const highlightsListEl = document.getElementById('highlights-list');
@@ -151,7 +152,10 @@ export function closeHighlightsPanel() {
 highlightsToggle.addEventListener('click', () => {
     const open = highlightsPanel.classList.toggle('open');
     highlightsToggle.classList.toggle('panel-open', open);
-    if (open) closeStatsPanel(); // mobile: only one drawer open at a time
+    if (open) {
+        closeStatsPanel(); // mobile: only one drawer open at a time
+        closeAdvancedSidePanel(); // ...including the advanced page's side panel
+    }
 });
 
 // EMOJI PICKER
