@@ -14,13 +14,9 @@
     border: 1px solid var(--panel-border);
     border-radius: 14px;
     padding: 20px;
-    z-index: 15;
-
-    /* hide the scrollbar visually - content still scrolls (wheel/touch/keyboard) */
+    z-index: 51;
     scrollbar-width: none;
-    /* Firefox */
     -ms-overflow-style: none;
-    /* IE/legacy Edge */
 }
 
 .highlights-panel::-webkit-scrollbar {
@@ -191,7 +187,7 @@ body:not(.logged-in) .btn-react {
         border-radius: 0 8px 8px 0;
         color: var(--text-muted);
         cursor: pointer;
-        z-index: 20;
+        z-index: 51;
         transition: transform 0.25s ease;
     }
 
