@@ -38,5 +38,5 @@ backend/app/__pycache__/
 backend/data/
 backend/app/output.png
 backend/app/debug_mask.png
-venv/
-.venv/
+backend/venv/
+backend/.venv/
