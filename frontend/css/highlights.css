@@ -1,0 +1,212 @@
+:root {
+    --highlights-drawer-width: 240px;
+}
+
+.highlights-panel {
+    display: block;
+    position: fixed;
+    top: calc(var(--nav-height) + 24px);
+    left: 24px;
+    width: 240px;
+    max-height: calc(100vh - var(--nav-height) - 48px);
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 20px;
+    z-index: 15;
+
+    /* hide the scrollbar visually - content still scrolls (wheel/touch/keyboard) */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* IE/legacy Edge */
+}
+
+.highlights-panel::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/new Edge */
+}
+
+.highlights-panel h2 {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 16px;
+}
+
+.highlight-card {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--panel-border);
+}
+
+.highlight-card:last-child {
+    border-bottom: none;
+}
+
+.highlight-player-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.highlight-player {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.highlight-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.highlight-card .frame-string {
+    display: block;
+    margin-top: 6px;
+    white-space: nowrap;
+    overflow-x: auto;
+}
+
+.highlight-card .history-score {
+    display: block;
+    margin-top: 4px;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--cyan);
+    text-shadow: 0 0 8px var(--cyan-glow, var(--amber-glow));
+}
+
+.reaction-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.reaction-pill {
+    font-size: 12px;
+    background: var(--amber-dim);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--text);
+    cursor: pointer;
+    user-select: none;
+}
+
+.reaction-pill:hover {
+    filter: brightness(1.2);
+}
+
+.btn-react {
+    background: none;
+    border: 1px solid var(--panel-border);
+    color: var(--text-muted);
+    border-radius: 999px;
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-react:hover {
+    color: var(--text);
+}
+
+/* Reactions require an account - hide the add-reaction trigger while logged out.
+   Existing reaction pills stay visible either way. */
+body:not(.logged-in) .btn-react {
+    display: none;
+}
+
+.emoji-picker {
+    position: fixed;
+    display: flex;
+    gap: 4px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 6px;
+    z-index: 30;
+}
+
+.emoji-option {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.emoji-option:hover {
+    background: var(--amber-dim);
+}
+
+/* Toggle arrow - only relevant in narrow/mobile layout, hidden otherwise */
+.highlights-toggle {
+    display: none;
+}
+
+@media (max-width: 1100px) {
+    .highlights-panel {
+        top: var(--nav-height);
+        left: 0;
+        width: var(--highlights-drawer-width);
+        height: calc(100vh - var(--nav-height));
+        height: calc(100dvh - var(--nav-height));
+        max-height: none;
+        padding-top: 20px;
+        border-radius: 0;
+        border-top: none;
+        border-bottom: none;
+        border-left: none;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+    }
+
+    .highlights-panel.open {
+        transform: translateX(0);
+    }
+
+    .highlights-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 347px;
+        left: 0;
+        transform: translateY(-50%) translateX(0);
+        width: 28px;
+        height: 44px;
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-left: none;
+        border-radius: 0 8px 8px 0;
+        color: var(--text-muted);
+        cursor: pointer;
+        z-index: 20;
+        transition: transform 0.25s ease;
+    }
+
+    .highlights-toggle.panel-open {
+        transform: translateY(-50%) translateX(var(--highlights-drawer-width));
+    }
+
+    .highlights-toggle svg {
+        width: 16px;
+        height: 16px;
+        transform: scaleX(-1);
+        transition: transform 0.25s ease;
+    }
+
+    .highlights-toggle.panel-open svg {
+        transform: scaleX(-1) rotate(180deg);
+    }
+}
