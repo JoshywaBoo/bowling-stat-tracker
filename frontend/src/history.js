@@ -107,7 +107,7 @@ export function applyHistoryFilter() {
         renderStats(filtered, `${selectedPlayerUsername}'s stats`);
     } else {
         renderHistory(filtered);
-        renderStats(filtered, 'Your stats');
+        renderStats(filtered, 'Your Stats');
     }
 }
 
