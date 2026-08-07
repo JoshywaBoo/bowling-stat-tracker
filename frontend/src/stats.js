@@ -4,6 +4,7 @@
 // views; the panel/toggle DOM itself is a single instance outside <main>.
 
 import { stripSplitMarkers, calculateBowlingScore, parseFrameChars } from './frames.js';
+import { closeHighlightsPanel } from './highlights.js';
 
 const statsPanel = document.getElementById('stats-panel');
 const statsPanelTitle = document.getElementById('stats-panel-title');
@@ -23,9 +24,17 @@ statsRangeBtns.forEach(btn => {
     });
 });
 
+// Exported so other panels (highlights) can close this one when they open,
+// on mobile where both are drawers that would otherwise overlap.
+export function closeStatsPanel() {
+    statsPanel.classList.remove('open');
+    statsToggle.classList.remove('panel-open');
+}
+
 statsToggle.addEventListener('click', () => {
     const open = statsPanel.classList.toggle('open');
     statsToggle.classList.toggle('panel-open', open);
+    if (open) closeHighlightsPanel(); // mobile: only one drawer open at a time
 });
 
 // Lets other modules (the advanced stats page) open on whatever the mini
