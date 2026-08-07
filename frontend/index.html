@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="css/history.css" />
   <link rel="stylesheet" href="css/stats.css" />
   <link rel="stylesheet" href="css/statsAdvanced.css" />
+  <link rel="stylesheet" href="css/highlights.css" />
 
 </head>
 
@@ -198,6 +199,19 @@
     </div>
     <div id="stats-content"></div>
   </aside>
+
+  <button type="button" class="highlights-toggle" id="highlights-toggle" aria-label="Toggle highlights panel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <aside class="highlights-panel" id="highlights-panel">
+    <h2>Highlights</h2>
+    <div id="highlights-list"></div>
+  </aside>
+
+  <div class="emoji-picker" id="emoji-picker" style="display:none;"></div>
 
   <div class="confirm-modal-overlay" id="confirm-modal-overlay" style="display:none;">
     <div class="confirm-modal">
