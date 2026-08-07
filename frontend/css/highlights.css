@@ -176,7 +176,7 @@ body:not(.logged-in) .btn-react {
         align-items: center;
         justify-content: center;
         position: fixed;
-        top: 347px;
+        top: calc(347px + env(safe-area-inset-top, 0px));
         left: 0;
         transform: translateY(-50%) translateX(0);
         width: 28px;

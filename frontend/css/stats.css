@@ -147,7 +147,7 @@ body.stats-active .stats-panel,
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: 347px;
+    top: calc(347px + env(safe-area-inset-top, 0px));
     right: 0;
     transform: translateY(-50%) translateX(0);
     width: 28px;
