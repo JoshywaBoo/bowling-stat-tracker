@@ -1,0 +1,108 @@
+.stats-advanced-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--void);
+    z-index: 50;
+    overflow-y: auto;
+    padding: calc(110px + env(safe-area-inset-top, 0px)) 20px 80px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.stats-advanced-overlay::-webkit-scrollbar {
+    display: none;
+}
+
+.stats-advanced-panel {
+    width: 640px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.stats-advanced-panel h2 {
+    font-family: 'VT323', monospace;
+    font-size: 32px;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--amber-glow);
+    margin: 12px 0 20px;
+}
+
+.stats-advanced-panel h3 {
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+
+.stats-trend-row {
+    display: flex;
+    align-items: center;
+    gap: 0px;
+    padding: 6px 0;
+}
+
+.stats-trend-bar {
+    height: 10px;
+    min-width: 2px;
+    background: var(--cyan);
+    border-radius: 4px;
+    opacity: 0.7;
+}
+
+.stats-trend-score {
+    font-family: 'VT323', monospace;
+    font-size: 16px;
+    color: var(--text);
+    width: 34px;
+    text-align: right;
+}
+
+.stats-trend-date {
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 70px;
+    flex-shrink: 0;
+}
+
+.chart-period-select {
+    background: #0d1114;
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 13px;
+    color-scheme: dark;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chart-period-select:hover {
+    border-color: var(--amber);
+    box-shadow: 0 0 10px var(--amber-glow);
+}
+
+.chart-period-select:focus {
+    outline: none;
+    border-color: var(--cyan);
+}
+
+/* Side panel and toggle reuse .stats-panel / .stats-toggle entirely
+   (stats.css handles both generically, including inside
+   #stats-advanced-overlay) - only the stacking order differs, since
+   these need to sit above the overlay. */
+.stats-advanced-side {
+    z-index: 55;
+}
+
+.stats-advanced-side .stats-range-toggle {
+    margin-bottom: 16px;
+}
+
+@media (max-width: 1100px) {
+    .stats-advanced-toggle {
+        z-index: 56;
+    }
+}
