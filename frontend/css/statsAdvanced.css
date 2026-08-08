@@ -4,7 +4,7 @@
     background: var(--void);
     z-index: 50;
     overflow-y: auto;
-    padding: calc(110px + env(safe-area-inset-top, 0px)) 20px 80px;
+    padding: calc(var(--nav-height) + var(--stats-advanced-header-height, 90px) + var(--stats-advanced-controls-height, 70px) + 20px) 20px 80px;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
@@ -19,12 +19,36 @@
     margin: 0 auto;
 }
 
-.stats-advanced-panel h2 {
-    font-family: 'VT323', monospace;
-    font-size: 32px;
-    color: var(--amber);
-    text-shadow: 0 0 18px var(--amber-glow);
-    margin: 12px 0 20px;
+.stats-advanced-header {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    z-index: 51;
+    padding: 12px 20px 0;
+    background: var(--void);
+}
+
+.stats-advanced-header-inner {
+    width: 640px;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+.stats-advanced-sticky-controls {
+    position: fixed;
+    top: calc(var(--nav-height) + var(--stats-advanced-header-height, 90px));
+    left: 0;
+    right: 0;
+    z-index: 51;
+    background: var(--void);
+    padding: 12px 20px 6px;
+}
+
+.stats-advanced-sticky-controls-inner {
+    width: 640px;
+    max-width: 100%;
+    margin: 0 auto;
 }
 
 .stats-advanced-panel h3 {
@@ -97,8 +121,8 @@
     z-index: 55;
 }
 
-.stats-advanced-side .stats-range-toggle {
-    margin-bottom: 16px;
+.stats-range-toggle {
+    margin-bottom: 6px;
 }
 
 @media (max-width: 1100px) {
