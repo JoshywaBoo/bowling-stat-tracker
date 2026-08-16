@@ -3,7 +3,9 @@
 // Fully self-contained (own DOM, own buffer state) — never touches
 // live.js's module state, so it can be opened regardless of whatever's
 // going on in the Live tracking section. Reuses live.js's pure bowling
-// logic (no DOM/module-state dependency) rather than re-deriving it.
+// logic (no DOM/module-state dependency) rather than re-deriving it, and
+// shares the frame-edit engine + split-pin detection with live.js via
+// frameEditor.js / splitDetection.js so both editors can't drift apart.
 
 import { renderPinRack, allPinsStanding, pinsDownCount } from './pinRack.js';
 import {
@@ -13,10 +15,8 @@ import {
 import { API_BASE } from './main.js';
 import { loadHistory } from './history.js';
 import { showLoggedOut } from './auth.js';
-import {
-    knockedPinNumbers, isFirstRollOfFrame, advanceAfterRoll,
-    isFrame10Complete, pinsStandingAfter,
-} from './live.js';
+import { knockedPinNumbers, isFirstRollOfFrame, advanceAfterRoll } from './live.js';
+import { createFrameEditor, markSplitIfNeeded, isFrame10Complete } from './frameEditor.js';
 
 const overlay = document.getElementById('pin-edit-modal-overlay');
 const pinRackContainer = document.getElementById('pin-edit-pin-rack');
@@ -38,16 +38,16 @@ let rackAtRollStart = allPinsStanding();
 let standingPins = allPinsStanding();
 let gameDone = false;
 
-let editingFrameIndex = null;
-let editStartOffset = 0;
-let editOriginalLength = 0;
-let editIsFrame10 = false;
-let editRollSymbols = [];
-let editPinHistory = [];
-let editRackAtRollStart = allPinsStanding();
-let editStandingPins = allPinsStanding();
-
 let splitFrames = {};
+
+// Same shared engine live.js uses, wired to THIS module's own
+// rollSymbols/pinHistory/splitFrames. Independent instance — nothing here
+// is shared with live.js's own frameEditor beyond the pure logic.
+const frameEditor = createFrameEditor({
+    getRollSymbols: () => rollSymbols,
+    getPinHistory: () => pinHistory,
+    getSplitFrames: () => splitFrames,
+});
 
 export function openPinEditModal(game) {
     gameId = game.id;
@@ -59,9 +59,7 @@ export function openPinEditModal(game) {
     standingPins = allPinsStanding();
     const loadedFrames = parseFrames(rollSymbols);
     gameDone = loadedFrames.length >= 10 ? isFrame10Complete(loadedFrames[9].split('')) : false;
-    editingFrameIndex = null;
-    editRollSymbols = [];
-    editPinHistory = [];
+    frameEditor.reset();
     playerNameInput.value = game.player_name || '';
     statusEl.textContent = '';
     saveBtn.disabled = false;
@@ -74,65 +72,13 @@ function closeModal() {
     gameId = null;
     rollSymbols = [];
     pinHistory = [];
-    editingFrameIndex = null;
-    editRollSymbols = [];
-    editPinHistory = [];
+    frameEditor.reset();
     splitFrames = {};
 }
 
-function frameStartOffsets(symbols) {
-    const frames = parseFrames(symbols);
-    const offsets = [];
-    let cum = 0;
-    frames.forEach(f => { offsets.push(cum); cum += f.length; });
-    return offsets;
-}
-
-function editFrameStart() {
-    if (!editRollSymbols.length) return true;
-    if (!editIsFrame10) return false;
-    const lastChar = editRollSymbols[editRollSymbols.length - 1].toUpperCase();
-    return lastChar === 'X' || lastChar === '/';
-}
-
-function editFrameDone() {
-    if (!editIsFrame10) {
-        const first = editRollSymbols[0].toUpperCase();
-        return first === 'X' || editRollSymbols.length === 2;
-    }
-    return isFrame10Complete(editRollSymbols);
-}
-
-function startFrameEdit(frameIdx) {
-    if (editingFrameIndex !== null) return;
-    const frames = parseFrames(rollSymbols);
-    if (frameIdx < 0 || frameIdx >= frames.length) return;
-
-    const frameChars = frames[frameIdx].split('');
-    const offsets = frameStartOffsets(rollSymbols);
-    editingFrameIndex = frameIdx;
-    editStartOffset = offsets[frameIdx];
-    editOriginalLength = frames[frameIdx].length;
-    editIsFrame10 = frameIdx === 9;
-
-    editRollSymbols = [];
-    editPinHistory = [];
-    editRackAtRollStart = allPinsStanding();
-    editStandingPins = frameChars.length
-        ? pinsStandingAfter([frameChars[0]])
-        : [...editRackAtRollStart];
-
-    statusEl.textContent = '';
-    render();
-}
-
-function cancelFrameEdit() {
-    editingFrameIndex = null;
-    editRollSymbols = [];
-    editPinHistory = [];
-    render();
-}
-
+// An edit only ever commits once its frame is fully complete, so after
+// committing we're always sitting exactly at a frame boundary — the next
+// roll (if any) always starts from a fresh rack.
 function recomputeStateAfterEdit() {
     const frames = parseFrames(rollSymbols);
     gameDone = frames.length >= 10 ? isFrame10Complete(frames[9].split('')) : false;
@@ -140,42 +86,12 @@ function recomputeStateAfterEdit() {
     standingPins = allPinsStanding();
 }
 
-function confirmEditRoll() {
-    const pinsAvailable = editRackAtRollStart.filter(Boolean).length;
-    const knockedThisRoll = editRackAtRollStart.filter((wasStanding, i) => wasStanding && !editStandingPins[i]).length;
-    const frameStart = editFrameStart();
-
-    let symbol;
-    if (knockedThisRoll === pinsAvailable) {
-        symbol = frameStart ? 'X' : '/';
-    } else {
-        symbol = knockedThisRoll === 0 ? '-' : String(knockedThisRoll);
-    }
-
-    editRollSymbols.push(symbol);
-    editPinHistory.push(knockedPinNumbers(editRackAtRollStart, editStandingPins));
-
-    if (editFrameDone()) {
-        rollSymbols.splice(editStartOffset, editOriginalLength, ...editRollSymbols);
-        pinHistory.splice(editStartOffset, editOriginalLength, ...editPinHistory);
-        delete splitFrames[editingFrameIndex];
-        editingFrameIndex = null;
-        editRollSymbols = [];
-        editPinHistory = [];
-        recomputeStateAfterEdit();
-    } else {
-        const justCleared = symbol === 'X' || symbol === '/';
-        const nextRack = (!editIsFrame10 || !justCleared) ? [...editStandingPins] : allPinsStanding();
-        editRackAtRollStart = nextRack;
-        editStandingPins = [...nextRack];
-    }
-
-    render();
-}
+// ------------------------------------------------------------------ render
 
 function renderFrameChips() {
     const frames = parseFrames(rollSymbols);
-    const editing = editingFrameIndex !== null;
+    const editing = frameEditor.isActive();
+    const editingFrameIndex = frameEditor.activeFrameIndex();
 
     frameStringEl.innerHTML = '';
 
@@ -183,10 +99,15 @@ function renderFrameChips() {
         const hasFrame = idx < frames.length;
         const isEditingThis = idx === editingFrameIndex;
         const displayFrame = isEditingThis
-            ? editRollSymbols.join('')
+            ? frameEditor.displayRollSymbols().join('')
             : (hasFrame ? frames[idx] : '');
         const isFrame10 = idx === 9;
-        const markedIndices = splitFrames[idx] || [];
+        // While this frame is the one being edited, use the frame editor's
+        // own live split marks (updated on every confirm) instead of the
+        // committed splitFrames — that way the split coloring changes the
+        // instant a roll is confirmed, not only once the whole frame is
+        // done and spliced back in.
+        const markedIndices = isEditingThis ? frameEditor.displaySplitMarks() : (splitFrames[idx] || []);
 
         const cell = document.createElement('div');
         cell.className = 'frame-cell';
@@ -251,15 +172,22 @@ function renderFrameChips() {
     }
 }
 
+function startFrameEdit(frameIdx) {
+    if (frameEditor.start(frameIdx)) {
+        statusEl.textContent = '';
+        render();
+    }
+}
+
 function render() {
-    const editing = editingFrameIndex !== null;
-    const activeStandingPins = editing ? editStandingPins : standingPins;
+    const editing = frameEditor.isActive();
+    const activeStandingPins = editing ? frameEditor.displayStandingPins() : standingPins;
 
     renderPinRack(pinRackContainer, activeStandingPins, editing ? handleEditToggle : handleToggle);
 
     const down = pinsDownCount(activeStandingPins);
     readoutEl.textContent = editing
-        ? `Editing frame ${editingFrameIndex + 1} — ${down} pin${down === 1 ? '' : 's'} down this roll`
+        ? `Editing frame ${frameEditor.activeFrameIndex() + 1} — ${down} pin${down === 1 ? '' : 's'} down this roll`
         : (gameDone ? 'Game complete' : `${down} pin${down === 1 ? '' : 's'} down this roll`);
 
     renderFrameChips();
@@ -276,13 +204,15 @@ function handleToggle(pinNumber) {
 }
 
 function handleEditToggle(pinNumber) {
-    editStandingPins[pinNumber - 1] = !editStandingPins[pinNumber - 1];
+    frameEditor.togglePin(pinNumber);
     render();
 }
 
 confirmBtn.addEventListener('click', () => {
-    if (editingFrameIndex !== null) {
-        confirmEditRoll();
+    if (frameEditor.isActive()) {
+        const { committed } = frameEditor.confirmRoll();
+        if (committed) recomputeStateAfterEdit();
+        render();
         return;
     }
     if (gameDone) return;
@@ -300,6 +230,7 @@ confirmBtn.addEventListener('click', () => {
 
     rollSymbols.push(symbol);
     pinHistory.push(knockedPinNumbers(rackAtRollStart, standingPins));
+    markSplitIfNeeded(splitFrames, rollSymbols, frameStart, standingPins);
 
     const { gameDone: done, nextRack } = advanceAfterRoll(symbol, rollSymbols, standingPins);
     gameDone = done;
@@ -309,7 +240,10 @@ confirmBtn.addEventListener('click', () => {
     render();
 });
 
-frameCancelBtn.addEventListener('click', () => cancelFrameEdit());
+frameCancelBtn.addEventListener('click', () => {
+    frameEditor.cancel();
+    render();
+});
 
 resetBtn.addEventListener('click', () => {
     rollSymbols = [];
@@ -317,9 +251,7 @@ resetBtn.addEventListener('click', () => {
     rackAtRollStart = allPinsStanding();
     standingPins = allPinsStanding();
     gameDone = false;
-    editingFrameIndex = null;
-    editRollSymbols = [];
-    editPinHistory = [];
+    frameEditor.reset();
     splitFrames = {};
     statusEl.textContent = '';
     render();
