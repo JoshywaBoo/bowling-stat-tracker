@@ -155,9 +155,11 @@
         <div class="pin-rack" id="pin-rack"></div>
         <p class="pin-rack-readout" id="pin-rack-readout"></p>
         <button type="button" id="pin-rack-confirm-btn" class="btn btn-primary">Confirm Roll</button>
-        <button type="button" id="live-save-btn" class="btn btn-primary" disabled>Save Game</button>
         <button type="button" id="pin-rack-edit-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
         <button type="button" class="btn btn-discard" id="pin-rack-reset-btn">Reset Game</button>
+        <div class="btn-action-row">
+          <button type="button" id="live-save-btn" class="btn btn-primary btn-save" disabled>Save Game</button>
+        </div>
         <p id="live-save-status" class="status"></p>
       </div>
 
@@ -248,6 +250,27 @@
         <button type="button" class="btn btn-delete" id="confirm-modal-ok">Delete</button>
         <button type="button" class="btn btn-discard" id="confirm-modal-cancel">Cancel</button>
       </div>
+    </div>
+  </div>
+
+  <div class="pin-edit-modal-overlay" id="pin-edit-modal-overlay" style="display:none;">
+    <div class="pin-edit-modal">
+      <div class="pin-edit-modal-header">
+        <span class="label">Edit game</span>
+        <button type="button" class="link-btn" id="pin-edit-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <input type="text" id="pin-edit-player-name" class="player-name-input" placeholder="Player name">
+      <div id="pin-edit-frame-string" class="frame-string"></div>
+      <div class="pin-rack" id="pin-edit-pin-rack"></div>
+      <p class="pin-rack-readout" id="pin-edit-readout"></p>
+      <button type="button" id="pin-edit-confirm-btn" class="btn btn-primary">Confirm Roll</button>
+      <button type="button" id="pin-edit-frame-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
+      <button type="button" id="pin-edit-reset-btn" class="btn btn-discard">Reset Game</button>
+      <div class="btn-action-row">
+        <button type="button" class="btn btn-primary btn-save" id="pin-edit-save-btn">Save changes</button>
+        <button type="button" class="btn btn-discard" id="pin-edit-discard-btn">Cancel</button>
+      </div>
+      <p id="pin-edit-status" class="status"></p>
     </div>
   </div>
 

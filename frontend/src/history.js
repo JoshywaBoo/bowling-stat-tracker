@@ -2,6 +2,9 @@
 
 import { API_BASE, showConfirmModal } from './main.js';
 import { historySearch, currentView } from './nav.js';
+import { openPinEditModal } from './historyPinEditor.js';
+import { showLiveSection } from './mode.js';
+import { loadGameForEditing } from './live.js';
 import { showLoggedOut } from './auth.js';
 import { stripSplitMarkers, isCleanGame, frameStringToHtml, calculateBowlingScore, parseAnnotatedFrameString } from './frames.js';
 import { renderStats } from './stats.js';
@@ -222,8 +225,15 @@ historyItemDropdown.addEventListener('click', (e) => e.stopPropagation());
 historyDropdownEdit.addEventListener('click', () => {
     const gameId = activeHistoryMenuGameId;
     closeHistoryMenu();
-    const game = allGames.find(g => g.id === gameId);
-    if (game) openGameForEditing(game);
+    const game = allGames.find(g => g.id === gameId)
+        ?? currentPlayerGames?.find(g => g.id === gameId);
+    if (!game) return;
+
+    if (game.pin_history && game.pin_history.length) {
+        openPinEditModal(game);
+    } else {
+        openGameForEditing(game);
+    }
 });
 
 historyDropdownDelete.addEventListener('click', async () => {

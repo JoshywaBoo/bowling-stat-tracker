@@ -102,3 +102,71 @@ button.frame-chip:hover {
     border-color: var(--cyan) !important;
     box-shadow: 0 0 8px rgba(41, 230, 200, 0.35);
 }
+
+.pin-edit-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.pin-edit-modal {
+    background: #0d1114;
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    color: inherit;
+}
+
+.pin-edit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.pin-edit-modal-header .label {
+    color: var(--text-muted);
+}
+
+#pin-edit-close-btn {
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+}
+
+#pin-edit-close-btn:hover {
+    color: var(--amber);
+}
+
+.pin-edit-modal #pin-edit-frame-string {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.pin-edit-modal .frame-cell {
+    flex: 1 1 0;
+    min-width: 0;
+    align-items: center;
+}
+
+.pin-edit-modal .frame-chip {
+    width: 100%;
+    min-width: 0;
+}
+
+.btn-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}

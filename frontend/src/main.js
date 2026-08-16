@@ -6,6 +6,7 @@ import { setAuthMode, checkSession } from './auth.js';
 import './statsAdvanced.js';
 import './mode.js';
 import './live.js';
+import './historyPinEditor.js';
 import { loadHighlights } from './highlights.js';
 import { Capacitor } from '@capacitor/core';
 
