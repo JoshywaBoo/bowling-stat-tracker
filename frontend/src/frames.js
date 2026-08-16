@@ -225,7 +225,7 @@ function enforceCapacity(player) {
 // the roll must follow a "fresh rack" (frame start, or previous roll was
 // a strike/spare) and must not itself be a strike or a spare-completion —
 // both of those clear the rack, so there's no split left standing.
-function frame10ValidMarkIndices(rollChars) {
+export function frame10ValidMarkIndices(rollChars) {
     const valid = [];
     let prevReset = true;
     for (let i = 0; i < rollChars.length; i++) {

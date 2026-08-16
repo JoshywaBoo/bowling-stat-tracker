@@ -25,7 +25,7 @@ function showUploadSection() {
     liveSection.classList.remove('visible');
 }
 
-function showLiveSection() {
+export function showLiveSection() {
     modePicker.classList.add('hidden');
     liveSection.classList.add('visible');
     uploadSection.classList.remove('visible');
