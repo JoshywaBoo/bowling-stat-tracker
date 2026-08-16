@@ -56,7 +56,6 @@ input[type="file"] {
     text-align: center;
     font-size: 14px;
     color: var(--text-muted);
-    min-height: 20px;
 }
 
 .status.error {
