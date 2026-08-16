@@ -34,14 +34,28 @@ section.history {
 
 .history-item {
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: column;
+    align-items: stretch;
     padding: 12px 10px;
     border: 1px solid var(--panel-border);
     border-radius: 10px;
     margin-bottom: 8px;
     background: var(--panel);
     cursor: pointer;
+}
+
+.history-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.history-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
 }
 
 .history-item img {
@@ -203,4 +217,51 @@ section.history {
     flex: 1 1 0;
     min-width: 0;
     box-sizing: border-box;
+}
+
+.history-expand {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--panel-border);
+}
+
+.history-expand-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 8px 0;
+}
+
+.history-frames-grid {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.history-frame-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.mini-pin-rack-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mini-pin-rack {
+    width: 48px;
+}
+
+.pin-rack-mini-svg {
+    width: 100%;
+    display: block;
+}
+
+.pin-rack-mini-svg .pin text {
+    display: none; /* too small to read at this size */
 }

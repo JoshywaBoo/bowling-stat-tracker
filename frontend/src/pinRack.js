@@ -89,3 +89,60 @@ export function allPinsStanding() {
 export function pinsDownCount(standingPins) {
     return standingPins.filter((standing) => !standing).length;
 }
+
+/**
+ * Given the pin_history entries for ONE frame (array of arrays of 1-based
+ * knocked-pin numbers, one per roll), reconstructs the standing-pins state
+ * AFTER each roll. Whenever a roll knocks down every remaining pin (a
+ * strike, or a spare/bonus completing the rack), the next roll starts
+ * fresh — this needs no knowledge of frame position or roll symbols since
+ * pin_history already records exactly which pins fell.
+ */
+export function frameRollStates(frameKnockedPins) {
+    const states = [];
+    let rack = allPinsStanding();
+    frameKnockedPins.forEach((knockedPins) => {
+        rack = rack.map((standing, i) => standing && !knockedPins.includes(i + 1));
+        states.push(rack);
+        if (rack.every((standing) => !standing)) {
+            rack = allPinsStanding();
+        }
+    });
+    return states;
+}
+
+/**
+ * Same visual as renderPinRack but read-only: no click/keyboard handlers,
+ * no tabindex. Used for small historical snapshots, e.g. the expanded
+ * per-roll view in game history.
+ */
+export function renderMiniPinRack(container, standingPins) {
+    container.innerHTML = '';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 200 150');
+    svg.classList.add('pin-rack-mini-svg');
+
+    PIN_POSITIONS.forEach(({ number, x, y }) => {
+        const standing = standingPins[number - 1];
+
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.classList.add('pin', standing ? 'pin-standing' : 'pin-down');
+
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', y);
+        circle.setAttribute('r', PIN_RADIUS);
+        group.appendChild(circle);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', x);
+        label.setAttribute('y', y);
+        label.textContent = number;
+        group.appendChild(label);
+
+        svg.appendChild(group);
+    });
+
+    container.appendChild(svg);
+}
