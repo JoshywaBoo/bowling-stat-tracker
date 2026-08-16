@@ -61,3 +61,44 @@
     stroke: var(--cyan);
     stroke-width: 2.5;
 }
+
+#live-frame-string {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0;
+}
+
+.frame-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    padding: 5px 7px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: none;
+    font: inherit;
+    font-family: 'VT323', monospace;
+    font-size: 19px;
+    letter-spacing: 1px;
+    color: inherit;
+    cursor: default;
+}
+
+button.frame-chip {
+    cursor: pointer;
+    border-color: var(--panel-border);
+    background: #0d1114;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+button.frame-chip:hover {
+    border-color: var(--amber);
+    background: #171c22;
+}
+
+.frame-chip-editing {
+    border-color: var(--cyan) !important;
+    box-shadow: 0 0 8px rgba(41, 230, 200, 0.35);
+}

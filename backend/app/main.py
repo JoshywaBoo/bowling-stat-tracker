@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import secrets
 import base64
+import json
 
 from dotenv import load_dotenv
 
@@ -90,6 +91,10 @@ def init_db() -> None:
             END $$;
             """,
         )
+        execute(
+            conn,
+            "ALTER TABLE games ADD COLUMN IF NOT EXISTS pin_history JSONB",
+        )
 
 
 auth.init_auth_tables()
@@ -103,6 +108,7 @@ def row_to_game(row: sqlite3.Row) -> dict:
         "frame_string": row["frame_string"],
         "file_name": row["file_name"],
         "created_at": row["created_at"],
+        "pin_history": row["pin_history"],
     }
 
 
@@ -135,7 +141,7 @@ def list_player_games(username: str):
 
         rows = execute(
             conn,
-            "SELECT id, player_name, frame_string, file_name, created_at FROM games "
+            "SELECT id, player_name, frame_string, file_name, created_at, pin_history FROM games "
             "WHERE user_id = ? ORDER BY created_at DESC",
             (user_row["id"],),
         ).fetchall()
@@ -350,6 +356,7 @@ class ConfirmGameRequest(BaseModel):
     player_name: str | None = None
     created_at: str | None = None
     file_name: str | None = None
+    pin_history: list | None = None
 
 
 class UpdateGameRequest(BaseModel):
@@ -404,13 +411,14 @@ def confirm_game(
     payload: ConfirmGameRequest, user: dict = Depends(auth.get_current_user)
 ):
     created_at_value = payload.created_at or datetime.now(timezone.utc).isoformat()
+    pin_history_json = json.dumps(payload.pin_history) if payload.pin_history is not None else None
     try:
         with get_db() as conn:
             game_id = insert_and_get_id(
                 conn,
-                "INSERT INTO games (user_id, image_key, player_name, frame_string, file_name, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
-                (user["id"], "", payload.player_name, payload.frame_string, payload.file_name, created_at_value),
+                "INSERT INTO games (user_id, image_key, player_name, frame_string, file_name, created_at, pin_history) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?::jsonb) RETURNING id",
+                (user["id"], "", payload.player_name, payload.frame_string, payload.file_name, created_at_value, pin_history_json),
             )
     except Exception as exc:
         if "uq_games_user_created_file" in str(exc):
@@ -426,6 +434,7 @@ def confirm_game(
         "frame_string": payload.frame_string,
         "file_name": payload.file_name,
         "created_at": created_at_value,
+        "pin_history": payload.pin_history,
     }
 
 
@@ -434,7 +443,7 @@ def list_games(user: dict = Depends(auth.get_current_user)):
     with get_db() as conn:
         rows = execute(
             conn,
-            "SELECT id, image_key, player_name, frame_string, file_name, created_at FROM games "
+            "SELECT id, image_key, player_name, frame_string, file_name, created_at, pin_history FROM games "
             "WHERE user_id = ? ORDER BY created_at DESC",
             (user["id"],),
         ).fetchall()
