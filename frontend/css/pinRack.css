@@ -1,0 +1,63 @@
+.pin-rack {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.pin-rack-svg {
+    width: 100%;
+    max-width: 400px;
+}
+
+.pin-rack-readout {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.pin circle {
+    fill: #0d1114;
+    stroke: var(--panel-border);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.pin text {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    text-anchor: middle;
+    dominant-baseline: central;
+    fill: #c72c2c;
+    pointer-events: none;
+    user-select: none;
+}
+
+.pin-standing circle {
+    fill: #ffffff;
+    stroke: #c72c2c;
+    filter: drop-shadow(0 0 6px #702020);
+}
+
+.pin-standing text {
+    fill: #c72c2c;
+}
+
+.pin-down text {
+    fill: var(--panel-border);
+}
+
+.pin:hover circle {
+    stroke: var(--cyan);
+}
+
+.pin:focus {
+    outline: none;
+}
+
+.pin:focus circle {
+    stroke: var(--cyan);
+    stroke-width: 2.5;
+}

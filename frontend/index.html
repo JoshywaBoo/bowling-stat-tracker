@@ -19,6 +19,8 @@
   <link rel="stylesheet" href="css/stats.css" />
   <link rel="stylesheet" href="css/statsAdvanced.css" />
   <link rel="stylesheet" href="css/highlights.css" />
+  <link rel="stylesheet" href="css/mode.css" />
+  <link rel="stylesheet" href="css/pinRack.css" />
 
 </head>
 
@@ -123,17 +125,37 @@
     </div>
 
     <div id="app-content">
-      <label class="dropzone" id="dropzone" for="file-input">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <p class="primary">Drop a scoreboard photo, or click to choose one</p>
-        <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
-      </label>
-      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
+      <div class="mode-picker" id="mode-picker">
+        <button type="button" class="mode-card" id="mode-live-btn">
+          <span class="mode-card-title">Live Tracking</span>
+          <span class="mode-card-desc">Enter rolls frame by frame as you bowl</span>
+        </button>
+        <button type="button" class="mode-card" id="mode-upload-btn">
+          <span class="mode-card-title">Upload Photo</span>
+          <span class="mode-card-desc">Snap the scoreboard and let OCR read it</span>
+        </button>
+      </div>
+
+      <div class="upload-section" id="upload-section">
+        <button type="button" class="link-btn mode-back-btn" id="upload-back-btn">&larr; Back</button>
+        <label class="dropzone" id="dropzone" for="file-input">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M12 16V4M12 4l-4 4M12 4l4 4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <p class="primary">Drop a scoreboard photo, or click to choose one</p>
+          <p class="secondary">JPEG, PNG, WEBP, or HEIC</p>
+        </label>
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple />
+      </div>
+
+      <div class="live-section" id="live-section">
+        <button type="button" class="link-btn mode-back-btn" id="live-back-btn">&larr; Back</button>
+        <div class="pin-rack" id="pin-rack"></div>
+        <p class="pin-rack-readout" id="pin-rack-readout"></p>
+        <button type="button" class="btn btn-discard" id="pin-rack-reset-btn">Reset pins</button>
+      </div>
 
       <p class="status" id="status"></p>
-
       <div class="result" id="result">
         <div class="result-header">
           <span class="label">Review &amp; edit before saving</span>
