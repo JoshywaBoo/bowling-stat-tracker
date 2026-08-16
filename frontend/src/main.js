@@ -4,6 +4,8 @@ import { resetThumbZoom } from './thumbZoom.js';
 import { renderStats, setStatsPanelVisible } from './stats.js';
 import { setAuthMode, checkSession } from './auth.js';
 import './statsAdvanced.js';
+import './mode.js';
+import './live.js';
 import { loadHighlights } from './highlights.js';
 import { Capacitor } from '@capacitor/core';
 
