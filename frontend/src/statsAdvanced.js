@@ -12,6 +12,8 @@ import { formatTime } from './format.js';
 import { closeHighlightsPanel } from './highlights.js';
 import { Chart } from 'chart.js/auto';
 import { Tooltip } from 'chart.js';
+import { computeLeaveBreakdown } from './pinStats.js';
+import { renderMiniPinRack, standingArrayFromPins } from './pinRack.js';
 
 const overlay = document.getElementById('stats-advanced-overlay');
 const titleEl = document.getElementById('stats-advanced-title');
@@ -34,6 +36,7 @@ let chartGroupMode = 'day'; // 'day' | 'month' | 'year' | 'alltime'
 let chartSelectedYear = null;
 let chartSelectedMonth = null; // 1-12
 let chartMonthPickerYear = null;
+let openLeaveGroupLabel = null;
 
 // ------------------------------------------------------------- height sync
 // .stats-advanced-header (back button + title) and .stats-advanced-sticky-controls
@@ -395,6 +398,29 @@ function renderChart(canvasId, config) {
 
 // ------------------------------------------------------------- UI fragments
 
+function renderLeaveGroupRow(group) {
+    const isOpen = openLeaveGroupLabel === group.label;
+    return `
+        <div class="stat-row leave-group-row expandable" data-leave-group="${group.label}">
+            <span class="stat-label">${isOpen ? '▾ ' : '▸ '}${group.label}</span>
+            <span class="stat-value" style="font-size:14px;">${group.count}</span>
+        </div>
+        ${isOpen ? `
+            <div class="leave-group-combos">
+                ${group.combos.map(c => `
+                    <div class="leave-combo-item">
+                        <div class="stat-row leave-combo-row">
+                            <span class="stat-label">${c.pins.join('-')}</span>
+                            <span class="stat-value" style="font-size:13px;">${c.count}</span>
+                        </div>
+                        <div class="leave-combo-pins" data-combo-key="${group.label}::${c.pins.join('-')}"></div>
+                    </div>
+                `).join('')}
+            </div>
+        ` : ''}
+    `;
+}
+
 // strike / spare / open frames by frame number 1-10
 function frameBreakdown(games) {
     const counts = Array.from({ length: 10 }, () => ({ strike: 0, spare: 0, open: 0 }));
@@ -489,6 +515,7 @@ function render() {
     }).join('');
 
     const frameCounts = frameBreakdown(games);
+    const leaveBreakdown = computeLeaveBreakdown(games);
     const frameRows = frameCounts.map((c, i) => {
         const total = c.strike + c.spare + c.open;
         const pct = (n) => total ? Math.round((n / total) * 100) : 0;
@@ -530,6 +557,14 @@ function render() {
         <h3 style="margin-top:24px;">Frame-by-frame breakdown</h3>
         ${frameRows}
 
+        <h3 style="margin-top:24px;">Spares left most often</h3>
+        <p class="empty-history" style="padding:4px 0 8px;">
+            ${leaveBreakdown.sampleSize
+                ? `Based on ${leaveBreakdown.sampleSize} game${leaveBreakdown.sampleSize === 1 ? '' : 's'} with pin data`
+                : 'No pin-by-pin data yet.'}
+        </p>
+        ${leaveBreakdown.groups.map(renderLeaveGroupRow).join('')}
+
         <h3 style="margin-top:24px;">Recent Games</h3>
         ${trendRows}
     `;
@@ -555,6 +590,15 @@ function render() {
     renderChart('split-conversion-chart', metricChartConfig(allGames, {
         metricFn: splitConversionMetric, mainLabel: 'Split Conversion', yMax: 100, color: '#ff5d5d',
     }));
+    // Populate the mini pin-rack visuals for the currently expanded leave group.
+    const openGroup = leaveBreakdown.groups.find(g => g.label === openLeaveGroupLabel);
+    if (openGroup) {
+        openGroup.combos.forEach(c => {
+            const key = `${openGroup.label}::${c.pins.join('-')}`;
+            const container = bodyEl.querySelector(`.leave-combo-pins[data-combo-key="${key}"]`);
+            if (container) renderMiniPinRack(container, standingArrayFromPins(c.pins));
+        });
+    }
 }
 
 // ------------------------------------------------------------ public API
@@ -611,6 +655,14 @@ bodyEl.addEventListener('click', (e) => {
     const modeBtn = e.target.closest('#chart-group-toggle .stats-range-btn');
     if (modeBtn) {
         chartGroupMode = modeBtn.dataset.mode;
+        render();
+        return;
+    }
+
+    const groupRow = e.target.closest('.leave-group-row.expandable');
+    if (groupRow) {
+        const label = groupRow.dataset.leaveGroup;
+        openLeaveGroupLabel = openLeaveGroupLabel === label ? null : label;
         render();
     }
 });
