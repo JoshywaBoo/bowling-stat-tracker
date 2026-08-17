@@ -85,6 +85,18 @@ export function allPinsStanding() {
     return new Array(10).fill(true);
 }
 
+/**
+ * Inverse of pin-number extraction: given a list of 1-based pin numbers,
+ * returns the length-10 standing-pins boolean array with just those pins
+ * standing. Used to visualize a known combo (e.g. a split) via
+ * renderMiniPinRack without needing real pin_history for it.
+ */
+export function standingArrayFromPins(pinNumbers) {
+    const arr = new Array(10).fill(false);
+    pinNumbers.forEach(p => { arr[p - 1] = true; });
+    return arr;
+}
+
 /** How many pins are down right now — this is what a roll symbol needs. */
 export function pinsDownCount(standingPins) {
     return standingPins.filter((standing) => !standing).length;
@@ -109,6 +121,30 @@ export function frameRollStates(frameKnockedPins) {
         }
     });
     return states;
+}
+
+/**
+ * Like frameRollStates, but only returns the standing-pins state after
+ * each FRESH-RACK-OPENING roll that left something standing — i.e. every
+ * "leave" in this frame. A strike or a fully-converted spare produces no
+ * entry (nothing left standing). Frame 10's mid-frame resets are handled
+ * the same way frameRollStates does, so a leave right after a strike/spare
+ * reset is captured too.
+ */
+export function frameLeaves(frameKnockedPins) {
+    const leaves = [];
+    let rack = allPinsStanding();
+    frameKnockedPins.forEach((knockedPins) => {
+        const wasFreshStart = rack.every(Boolean);
+        rack = rack.map((standing, i) => standing && !knockedPins.includes(i + 1));
+        if (wasFreshStart && rack.some(Boolean)) {
+            leaves.push([...rack]);
+        }
+        if (rack.every((standing) => !standing)) {
+            rack = allPinsStanding();
+        }
+    });
+    return leaves;
 }
 
 /**
