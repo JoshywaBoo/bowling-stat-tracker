@@ -11,6 +11,9 @@ import { API_BASE } from './main.js';
 import { showLoggedOut } from './auth.js';
 import { closeStatsPanel } from './stats.js';
 import { closeAdvancedSidePanel } from './statsAdvanced.js';
+import { setNavView, historySearch } from './nav.js';
+import { openPlayerDetail, playerDetailHistory } from './players.js';
+import { expandGame } from './history.js';
 
 const highlightsPanel = document.getElementById('highlights-panel');
 const highlightsListEl = document.getElementById('highlights-list');
@@ -101,7 +104,7 @@ function renderHighlights(highlights) {
     highlightsListEl.innerHTML = highlights.map(g => `
         <div class="highlight-card" data-game-id="${g.id}">
             <div class="highlight-player-row">
-                <span class="highlight-player">${g.username}</span>
+                <span class="highlight-player" data-username="${g.username}">${g.username}</span>
                 <time class="highlight-date">${formatTime(g.created_at)}</time>
             </div>
             <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
@@ -223,6 +226,38 @@ emojiPickerEl.addEventListener('click', (e) => {
     const gameId = emojiPickerEl.dataset.gameId;
     closeEmojiPicker();
     toggleReaction(gameId, btn.dataset.emoji);
+});
+
+highlightsListEl.addEventListener('click', (e) => {
+    const nameEl = e.target.closest('.highlight-player');
+    if (!nameEl) return;
+    e.stopPropagation();
+    const username = nameEl.dataset.username;
+    setNavView('players');
+    openPlayerDetail(username);
+    closeHighlightsPanel();
+});
+
+async function openHighlightGame(username, gameId) {
+    setNavView('players');
+    historySearch.value = '';
+    await openPlayerDetail(username);
+    const item = expandGame(playerDetailHistory, gameId);
+    if (item) {
+        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    closeHighlightsPanel();
+}
+
+highlightsListEl.addEventListener('click', (e) => {
+    const frameStringEl = e.target.closest('.frame-string');
+    if (!frameStringEl) return;
+    e.stopPropagation();
+    const card = frameStringEl.closest('.highlight-card');
+    const username = card.querySelector('.highlight-player')?.dataset.username;
+    const gameId = Number(card.dataset.gameId);
+    if (!username) return;
+    openHighlightGame(username, gameId);
 });
 
 document.addEventListener('click', () => closeEmojiPicker());

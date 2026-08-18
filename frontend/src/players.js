@@ -2,7 +2,7 @@
 
 import { API_BASE } from './main.js';
 import { setStatsPanelVisible } from './stats.js';
-import { applyHistoryFilter } from './history.js';
+import { applyHistoryFilter, renderGameList } from './history.js';
 import { formatTime } from './format.js';
 import { frameStringToHtml, calculateBowlingScore, stripSplitMarkers } from './frames.js';
 
@@ -10,7 +10,8 @@ const playersListView = document.getElementById('players-list-view');
 const playersListEl = document.getElementById('players-list');
 const playerDetailBack = document.getElementById('player-detail-back');
 const playerDetailName = document.getElementById('player-detail-name');
-const playerDetailHistory = document.getElementById('player-detail-history');
+
+export const playerDetailHistory = document.getElementById('player-detail-history');
 
 export const playerDetailView = document.getElementById('player-detail-view');
 export const playersContent = document.getElementById('players-content');
@@ -71,26 +72,7 @@ export async function openPlayerDetail(username) {
 
 // Same rendering as renderHistory(), minus the edit/delete buttons.
 export function renderPlayerHistory(games) {
-    playerDetailHistory.innerHTML = '';
-    if (!games.length) {
-        playerDetailHistory.innerHTML = '<p class="empty-history">No games yet.</p>';
-        return;
-    }
-    games.forEach(g => {
-        const item = document.createElement('div');
-        item.className = 'history-item';
-        const cleanScore = calculateBowlingScore(stripSplitMarkers(g.frame_string));
-        item.innerHTML = `
-        <div class="history-main">
-        <span class="frame-string">${frameStringToHtml(g.frame_string)}</span>
-        <span class="history-score">${cleanScore}</span>
-        </div>
-        <div class="history-item-actions">
-        <time>${formatTime(g.created_at)}</time>
-        </div>
-        `;
-        playerDetailHistory.appendChild(item);
-    });
+    renderGameList(games, playerDetailHistory, { showActions: false });
 }
 
 playerDetailBack.addEventListener('click', () => {

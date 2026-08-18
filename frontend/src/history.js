@@ -14,6 +14,7 @@ import { playerDetailView, currentPlayerGames, renderPlayerHistory, selectedPlay
 import { frameRollStates, renderMiniPinRack } from './pinRack.js';
 
 const historyList = document.getElementById('history-list');
+const playerDetailHistory = document.getElementById('player-detail-history');
 const historyItemDropdown = document.getElementById('history-item-dropdown');
 const historyDropdownEdit = document.getElementById('history-dropdown-edit');
 const historyDropdownDelete = document.getElementById('history-dropdown-delete');
@@ -22,10 +23,10 @@ let allGames = [];
 let activeHistoryMenuGameId = null;
 let openExpandEl = null;
 
-export function renderHistory(games) {
-    historyList.innerHTML = '';
+export function renderGameList(games, listEl, { showActions }) {
+    listEl.innerHTML = '';
     if (!games.length) {
-        historyList.innerHTML = '<p class="empty-history">No games uploaded yet.</p>';
+        listEl.innerHTML = '<p class="empty-history">No games yet.</p>';
         return;
     }
     games.forEach(g => {
@@ -41,13 +42,17 @@ export function renderHistory(games) {
         </div>
         <div class="history-item-actions">
         <time>${formatTime(g.created_at)}</time>
-        <button type="button" class="btn-menu-dots" data-game-id="${g.id}" aria-label="Game options">&#8942;</button>
+        ${showActions ? `<button type="button" class="btn-menu-dots" data-game-id="${g.id}" aria-label="Game options">&#8942;</button>` : ''}
         </div>
         </div>
         <div class="history-expand" style="display:none;"></div>
         `;
-        historyList.appendChild(item);
+        listEl.appendChild(item);
     });
+}
+
+export function renderHistory(games) {
+    renderGameList(games, historyList, { showActions: true });
 }
 
 // Splits a game's frame_string and pin_history into one entry per frame:
@@ -188,7 +193,7 @@ export function applyHistoryFilter() {
     }
 }
 
-historyList.addEventListener('click', (e) => {
+function handleHistoryListClick(e) {
     const dotsBtn = e.target.closest('.btn-menu-dots');
     if (dotsBtn) {
         e.stopPropagation();
@@ -200,14 +205,22 @@ historyList.addEventListener('click', (e) => {
     if (!item) return;
 
     const gameId = Number(item.dataset.gameId);
+    const listEl = item.closest('#history-list, #player-detail-history');
     const expandEl = item.querySelector('.history-expand');
 
     if (expandEl === openExpandEl) {
-        // clicking the already-open item again just closes it
         closeOpenExpand();
         return;
     }
 
+    expandGame(listEl, gameId);
+}
+
+export function expandGame(listEl, gameId) {
+    const item = listEl.querySelector(`.history-item[data-game-id="${gameId}"]`);
+    if (!item) return false; // not in the currently-rendered list (e.g. filtered out)
+
+    const expandEl = item.querySelector('.history-expand');
     closeOpenExpand();
 
     if (!expandEl.dataset.built) {
@@ -218,7 +231,11 @@ historyList.addEventListener('click', (e) => {
     }
     expandEl.style.display = 'block';
     openExpandEl = expandEl;
-});
+    return item; // return the element so the caller can scroll to it
+}
+
+historyList.addEventListener('click', handleHistoryListClick);
+playerDetailHistory.addEventListener('click', handleHistoryListClick);
 
 historyItemDropdown.addEventListener('click', (e) => e.stopPropagation());
 
