@@ -79,7 +79,6 @@ export function computeLeaveBreakdown(games) {
             const count = combos.reduce((sum, c) => sum + c.count, 0);
             return { label, count, combos };
         })
-        .filter(g => g.count > 0)
         .sort((a, b) => b.count - a.count);
 
     return { sampleSize: withPinData.length, groups };
