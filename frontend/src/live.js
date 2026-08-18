@@ -15,6 +15,8 @@ const readoutEl = document.getElementById('pin-rack-readout');
 const resetBtn = document.getElementById('pin-rack-reset-btn');
 const confirmBtn = document.getElementById('pin-rack-confirm-btn');
 const editCancelBtn = document.getElementById('pin-rack-edit-cancel-btn');
+const strikeBtn = document.getElementById('pin-rack-strike-btn');
+const invertBtn = document.getElementById('pin-rack-invert-btn');
 const liveBackBtn = document.getElementById('live-back-btn');
 const frameStringEl = document.getElementById('live-frame-string');
 const playerNameInput = document.getElementById('live-player-name');
@@ -308,6 +310,26 @@ function handleEditToggle(pinNumber) {
     render();
 }
 
+function handleStrikeAll() {
+    if (frameEditor.isActive()) {
+        frameEditor.knockAllStanding();
+    } else {
+        if (gameDone) return;
+        standingPins = standingPins.map(() => false);
+    }
+    render();
+}
+
+function handleInvertAll() {
+    if (frameEditor.isActive()) {
+        frameEditor.invertStandingPins();
+    } else {
+        if (gameDone) return;
+        standingPins = standingPins.map(p => !p);
+    }
+    render();
+}
+
 confirmBtn.addEventListener('click', () => {
     if (frameEditor.isActive()) {
         const { committed } = frameEditor.confirmRoll();
@@ -357,6 +379,10 @@ resetBtn.addEventListener('click', () => {
     clearLiveGameState();
     render();
 });
+
+strikeBtn.addEventListener('click', handleStrikeAll);
+
+invertBtn.addEventListener('click', handleInvertAll);
 
 // mode.js's own listener on this button switches back to the mode picker;
 // this just makes sure we don't leave a stale "editing saved game" buffer

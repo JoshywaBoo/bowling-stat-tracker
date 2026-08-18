@@ -30,6 +30,8 @@ const saveBtn = document.getElementById('pin-edit-save-btn');
 const discardBtn = document.getElementById('pin-edit-discard-btn');
 const closeBtn = document.getElementById('pin-edit-close-btn');
 const statusEl = document.getElementById('pin-edit-status');
+const strikeBtn = document.getElementById('pin-edit-strike-btn');
+const invertBtn = document.getElementById('pin-edit-invert-btn');
 
 let gameId = null;
 let rollSymbols = [];
@@ -208,6 +210,26 @@ function handleEditToggle(pinNumber) {
     render();
 }
 
+function handleStrikeAll() {
+    if (frameEditor.isActive()) {
+        frameEditor.knockAllStanding();
+    } else {
+        if (gameDone) return;
+        standingPins = standingPins.map(() => false);
+    }
+    render();
+}
+
+function handleInvertAll() {
+    if (frameEditor.isActive()) {
+        frameEditor.invertStandingPins();
+    } else {
+        if (gameDone) return;
+        standingPins = standingPins.map(p => !p);
+    }
+    render();
+}
+
 confirmBtn.addEventListener('click', () => {
     if (frameEditor.isActive()) {
         const { committed } = frameEditor.confirmRoll();
@@ -294,8 +316,14 @@ saveBtn.addEventListener('click', async () => {
     }
 });
 
+strikeBtn.addEventListener('click', handleStrikeAll);
+
+invertBtn.addEventListener('click', handleInvertAll);
+
 discardBtn.addEventListener('click', closeModal);
+
 closeBtn.addEventListener('click', closeModal);
+
 overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
 });
