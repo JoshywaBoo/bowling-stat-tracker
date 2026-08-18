@@ -154,12 +154,14 @@
         <div id="live-frame-string" class="frame-string"></div>
         <div class="pin-rack" id="pin-rack"></div>
         <p class="pin-rack-readout" id="pin-rack-readout"></p>
-        <button type="button" id="pin-rack-confirm-btn" class="btn btn-primary">Confirm Roll</button>
-        <button type="button" id="pin-rack-edit-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
+        <button type="button" id="pin-rack-strike-btn" class="btn btn-primary">Strike/Split</button>
+        <button type="button" id="pin-rack-invert-btn" class="btn btn-primary">Invert Pins</button>
+        <button type="button" id="live-save-btn" class="btn btn-primary" disabled>Save Game</button>
         <button type="button" class="btn btn-discard" id="pin-rack-reset-btn">Reset Game</button>
         <div class="btn-action-row">
-          <button type="button" id="live-save-btn" class="btn btn-primary btn-save" disabled>Save Game</button>
+          <button type="button" id="pin-rack-confirm-btn" class="btn btn-primary btn-save">Confirm Roll</button>
         </div>
+        <button type="button" id="pin-rack-edit-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
         <p id="live-save-status" class="status"></p>
       </div>
 
@@ -263,13 +265,15 @@
       <div id="pin-edit-frame-string" class="frame-string"></div>
       <div class="pin-rack" id="pin-edit-pin-rack"></div>
       <p class="pin-rack-readout" id="pin-edit-readout"></p>
-      <button type="button" id="pin-edit-confirm-btn" class="btn btn-primary">Confirm Roll</button>
-      <button type="button" id="pin-edit-frame-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
+      <button type="button" id="pin-edit-strike-btn" class="btn btn-primary">Strike/Split</button>
+      <button type="button" id="pin-edit-invert-btn" class="btn btn-primary">Invert Pins</button>
+      <button type="button" id="pin-edit-save-btn" class="btn btn-primary">Save changes</button>
       <button type="button" id="pin-edit-reset-btn" class="btn btn-discard">Reset Game</button>
       <div class="btn-action-row">
-        <button type="button" class="btn btn-primary btn-save" id="pin-edit-save-btn">Save changes</button>
+        <button type="button" id="pin-edit-confirm-btn" class="btn btn-primary">Confirm Roll</button>
         <button type="button" class="btn btn-discard" id="pin-edit-discard-btn">Cancel</button>
       </div>
+      <button type="button" id="pin-edit-frame-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
       <p id="pin-edit-status" class="status"></p>
     </div>
   </div>

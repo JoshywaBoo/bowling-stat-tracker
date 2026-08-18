@@ -268,11 +268,23 @@ export function createFrameEditor(host) {
         return { committed: false };
     }
 
+    function knockAllStanding() {
+        if (!isActive()) return;
+        editStandingPins = editStandingPins.map(() => false);
+    }
+
+    function invertStandingPins() {
+        if (!isActive()) return;
+        editStandingPins = editStandingPins.map(p => !p);
+    }
+
     return {
         start,
         cancel,
         reset,
         togglePin,
+        knockAllStanding,
+        invertStandingPins,
         confirmRoll,
         isActive,
         activeFrameIndex,
