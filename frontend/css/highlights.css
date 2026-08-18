@@ -7,7 +7,7 @@
     position: fixed;
     top: calc(var(--nav-height) + 24px);
     left: 24px;
-    width: 240px;
+    width: 250px;
     max-height: calc(100vh - var(--nav-height) - 48px);
     overflow-y: auto;
     background: var(--panel);
@@ -148,6 +148,22 @@ body:not(.logged-in) .btn-react {
 /* Toggle arrow - only relevant in narrow/mobile layout, hidden otherwise */
 .highlights-toggle {
     display: none;
+}
+
+.highlight-player { 
+    cursor: pointer;
+}
+
+.highlight-player:hover {
+    color: var(--text);
+}
+
+.highlight-card .frame-string {
+    cursor: pointer;
+}
+
+.highlight-card .frame-string:hover {
+    filter: brightness(1.5);
 }
 
 @media (max-width: 1100px) {

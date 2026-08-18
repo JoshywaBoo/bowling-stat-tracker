@@ -7,7 +7,7 @@
   position: fixed;
   top: calc(var(--nav-height) + 24px);
   right: 24px;
-  width: 240px;
+  width: 250px;
   max-height: calc(100vh - var(--nav-height) - 48px);
   overflow-y: auto;
   background: var(--panel);
