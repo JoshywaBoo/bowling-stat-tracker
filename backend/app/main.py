@@ -47,6 +47,11 @@ except OSError:
 
 app = FastAPI(title="Bowling Scoreboard Reader")
 
+@app.get("/health")
+@app.head("/health")
+def health_check():
+    return {"status": "ok"}
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
