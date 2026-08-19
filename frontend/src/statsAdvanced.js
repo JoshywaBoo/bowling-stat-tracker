@@ -160,11 +160,14 @@ function spareConversionMetric(g) {
         let prevReset = true;
         for (let i = 0; i < chars.length; i++) {
             const ch = chars[i].toUpperCase();
-            if (prevReset && ch !== '/') {
+            const isResetRoll = (ch === 'X' || ch === '/');
+            const hasFollowingRoll = i + 1 < chars.length;
+
+            if (prevReset && !isResetRoll && hasFollowingRoll) {
                 spareOpportunities++;
                 if (chars[i + 1] === '/') spareConversions++;
             }
-            prevReset = (ch === 'X' || ch === '/');
+            prevReset = isResetRoll;
         }
     });
 
@@ -195,13 +198,16 @@ function splitConversionMetric(g) {
         let prevReset = true;
         for (let i = 0; i < chars.length; i++) {
             const ch = chars[i].toUpperCase();
-            if (prevReset && ch !== '/') {
+            const isResetRoll = (ch === 'X' || ch === '/');
+            const hasFollowingRoll = i + 1 < chars.length;
+
+            if (prevReset && !isResetRoll && hasFollowingRoll) {
                 if (marks.includes(i)) {
                     splitsLeft++;
                     if (chars[i + 1] === '/') splitsConverted++;
                 }
             }
-            prevReset = (ch === 'X' || ch === '/');
+            prevReset = isResetRoll;
         }
     });
 

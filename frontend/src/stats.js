@@ -170,18 +170,20 @@ export function computeStats(games) {
             let prevReset = true;
             for (let i = 0; i < chars.length; i++) {
                 const ch = chars[i].toUpperCase();
-                if (prevReset && ch !== '/') {
+                const isResetRoll = (ch === 'X' || ch === '/');
+                const hasFollowingRoll = i + 1 < chars.length;
+
+                if (prevReset && !isResetRoll && hasFollowingRoll) {
                     spareOpportunities++;
                     const wasSplit = marks.includes(i);
                     if (wasSplit) splitsLeft++;
 
-                    const nextCh = chars[i + 1];
-                    if (nextCh === '/') {
+                    if (chars[i + 1] === '/') {
                         spareConversions++;
                         if (wasSplit) splitsConverted++;
                     }
                 }
-                prevReset = (ch === 'X' || ch === '/');
+                prevReset = isResetRoll;
             }
         });
     });
