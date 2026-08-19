@@ -134,14 +134,18 @@ export function frameRollStates(frameKnockedPins) {
 export function frameLeaves(frameKnockedPins) {
     const leaves = [];
     let rack = allPinsStanding();
+    let isFreshStart = true; // true only for the frame's first roll, or right after a rack-clearing roll
     frameKnockedPins.forEach((knockedPins) => {
-        const wasFreshStart = rack.every(Boolean);
+        const wasFreshStart = isFreshStart;
         rack = rack.map((standing, i) => standing && !knockedPins.includes(i + 1));
         if (wasFreshStart && rack.some(Boolean)) {
             leaves.push([...rack]);
         }
         if (rack.every((standing) => !standing)) {
             rack = allPinsStanding();
+            isFreshStart = true;
+        } else {
+            isFreshStart = false;
         }
     });
     return leaves;
