@@ -6,9 +6,8 @@ import { resetThumbZoom } from './thumbZoom.js';
 import { formatDateTimeInput } from './format.js';
 import { loadHistory } from './history.js';
 import {
-    resetResultPanel, setPendingUpload, setPendingEdit,
+    resetResultPanel, setPendingUpload,
     resultEl, saveBtn, discardBtn, thumbRow, editedDateTimeInput,
-    closeResultModal,
 } from './saveOps.js';
 
 const dropzone = document.getElementById('dropzone');
@@ -25,7 +24,6 @@ export const thumbFilename = document.getElementById('thumb-filename');
 //   doesn't need to re-await something that already finished
 let uploadQueue = [];
 let queueIndex = 0;
-let queueSuspendedForEdit = false;
 let queueRequestToken = 0;
 let pendingRetry = null; // { index } - set when the currently-shown queue item failed
 
@@ -36,11 +34,7 @@ let pendingRetry = null; // { index } - set when the currently-shown queue item 
 let activeUploadCount = 0;
 let nextUploadToLaunch = 0; // index of the next file that hasn't started yet
 
-export { uploadQueue, queueIndex, queueSuspendedForEdit, pendingRetry };
-
-export function setQueueSuspendedForEdit(value) {
-    queueSuspendedForEdit = value;
-}
+export { uploadQueue, queueIndex, pendingRetry };
 
 export function bumpQueueRequestToken() {
     queueRequestToken++;
@@ -58,7 +52,6 @@ export function setStatus(msg, isError = false) {
 export function resetQueueState() {
     uploadQueue = [];
     queueIndex = 0;
-    queueSuspendedForEdit = false;
 }
 
 function canPreviewLocally(file) {
@@ -121,10 +114,7 @@ export function startUploadQueue(files) {
     const newEntries = files.map(file => ({ file, promise: null, result: null, error: null }));
     uploadQueue.push(...newEntries);
     pumpUploadQueue(); // picks up the new entries once a slot frees up
-    if (!queueSuspendedForEdit) {
-        document.getElementById('queue-progress').textContent =
-            `Photo ${queueIndex + 1}/${uploadQueue.length}`;
-    }
+    document.getElementById('queue-progress').textContent = `Photo ${queueIndex + 1}/${uploadQueue.length}`;
 }
 
 // Only browser-natively-previewable formats get a local preview while OCR
@@ -139,7 +129,6 @@ export async function showQueueItem(index) {
     if (index >= uploadQueue.length) {
         document.getElementById('queue-progress').textContent = '';
         resultEl.classList.remove('visible');
-        closeResultModal();
         setStatus('');
         uploadQueue = [];
         queueIndex = 0;
@@ -154,8 +143,6 @@ export async function showQueueItem(index) {
         `Photo ${index + 1}/${uploadQueue.length}`;
 
     setPendingUpload(null);
-    setPendingEdit(null);            // resuming the queue always ends any pending edit
-    closeResultModal(); 
     setPendingRetry(null);           // clear any stale retry state from a previous failed item
     setPlayers([]);
     playerRowsEl.innerHTML = '';

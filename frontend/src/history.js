@@ -9,7 +9,8 @@ import { showLoggedOut } from './auth.js';
 import { stripSplitMarkers, isCleanGame, frameStringToHtml, calculateBowlingScore, parseAnnotatedFrameString } from './frames.js';
 import { renderStats } from './stats.js';
 import { formatTime, formatDateTimeInput } from './format.js';
-import { openGameForEditing, deleteGameById } from './saveOps.js';
+import { deleteGameById } from './saveOps.js';
+import { openEditGameModal } from './editGameModal.js';
 import { playerDetailView, currentPlayerGames, renderPlayerHistory, selectedPlayerUsername } from './players.js';
 import { frameRollStates, renderMiniPinRack } from './pinRack.js';
 
@@ -260,7 +261,7 @@ historyDropdownEdit.addEventListener('click', () => {
     if (game.pin_history && game.pin_history.length) {
         openPinEditModal(game);
     } else {
-        openGameForEditing(game);
+        openEditGameModal(game);
     }
 });
 
@@ -273,8 +274,17 @@ historyDropdownDelete.addEventListener('click', async () => {
 
 document.addEventListener('click', (e) => {
     closeHistoryMenu();
-    const insideEditModal = e.target.closest('#pin-edit-modal-overlay, #result, #result-modal-backdrop');
-    if (openExpandEl && !insideEditModal && !openExpandEl.closest('.history-item')?.contains(e.target)) {
+
+    const path = e.composedPath();
+    const insideEditModal = path.some(el =>
+        el instanceof Element &&
+        el.matches('#pin-edit-modal-overlay, #edit-game-modal-overlay, #result, #result-modal-backdrop')
+    );
+    const insideOpenExpandItem = openExpandEl
+        ? path.includes(openExpandEl.closest('.history-item'))
+        : false;
+
+    if (openExpandEl && !insideEditModal && !insideOpenExpandItem) {
         closeOpenExpand();
     }
 });
