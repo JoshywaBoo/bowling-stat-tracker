@@ -148,6 +148,17 @@ button.frame-chip:hover {
     text-decoration: none;
 }
 
+#edit-game-close-btn {
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+}
+
+#edit-game-close-btn:hover {
+    color: var(--amber);
+    text-decoration: none;
+}
+
 .pin-edit-modal #pin-edit-frame-string {
     display: flex;
     flex-wrap: nowrap;

@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/highlights.css" />
   <link rel="stylesheet" href="css/mode.css" />
   <link rel="stylesheet" href="css/pinRack.css" />
-
+  <script type="module" src="/src/editGameModal.js"></script>
 </head>
 
 <body>
@@ -169,7 +169,6 @@
       <div class="result" id="result">
         <div class="result-header">
           <span class="label">Review &amp; edit before saving</span>
-          <button type="button" class="link-btn" id="result-close-btn" aria-label="Close">&times;</button>
         </div>
         <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 1-9, /, -, F</p>
         <div class="result-meta">
@@ -255,7 +254,26 @@
     </div>
   </div>
 
-  <div class="result-modal-backdrop" id="result-modal-backdrop" style="display:none;"></div>
+  <div class="pin-edit-modal-overlay" id="edit-game-modal-overlay" style="display:none;">
+    <div class="pin-edit-modal">
+      <div class="pin-edit-modal-header">
+        <span class="label">Edit game</span>
+        <button type="button" class="link-btn" id="edit-game-close-btn" aria-label="Close">&times;</button>
+      </div>
+      <p class="result-hint">Fix any misread rolls, then save. Allowed symbols: X, 1-9, /, -, F</p>
+      <div class="result-meta">
+        <label for="edit-game-datetime">Date / time</label>
+        <input type="datetime-local" id="edit-game-datetime" />
+      </div>
+      <input type="text" id="edit-game-player-name" class="player-name-input" placeholder="Player name">
+      <div id="edit-game-frames" class="frames" style="margin-top:12px;"></div>
+      <div class="btn-action-row" style="margin-top:20px;">
+        <button type="button" class="btn btn-primary btn-save" id="edit-game-save-btn">Save changes</button>
+        <button type="button" class="btn btn-discard" id="edit-game-discard-btn">Cancel</button>
+      </div>
+      <p class="save-error" id="edit-game-error"></p>
+    </div>
+  </div>
 
   <div class="pin-edit-modal-overlay" id="pin-edit-modal-overlay" style="display:none;">
     <div class="pin-edit-modal">
@@ -263,19 +281,20 @@
         <span class="label">Edit game</span>
         <button type="button" class="link-btn" id="pin-edit-close-btn" aria-label="Close">&times;</button>
       </div>
+      <p class="result-hint">Tap a frame to fix it pin-by-pin.</p>
       <input type="text" id="pin-edit-player-name" class="player-name-input" placeholder="Player name">
-      <div id="pin-edit-frame-string" class="frame-string"></div>
+      <div id="pin-edit-frame-string" class="frames" style="margin-top:12px;"></div>
       <div class="pin-rack" id="pin-edit-pin-rack"></div>
       <p class="pin-rack-readout" id="pin-edit-readout"></p>
       <button type="button" id="pin-edit-strike-btn" class="btn btn-primary">Strike/Split</button>
       <button type="button" id="pin-edit-invert-btn" class="btn btn-primary">Invert Pins</button>
-      <button type="button" id="pin-edit-save-btn" class="btn btn-primary">Save changes</button>
       <button type="button" id="pin-edit-frame-cancel-btn" class="btn btn-discard" style="display:none;">Cancel edit</button>
+      <button type="button" class="btn btn-primary btn-save" id="pin-edit-save-btn">Save changes</button>
       <div class="btn-action-row">
         <button type="button" id="pin-edit-confirm-btn" class="btn btn-primary btn-save">Confirm Roll</button>
         <button type="button" class="btn btn-discard" id="pin-edit-discard-btn">Cancel</button>
       </div>
-      <p id="pin-edit-status" class="status"></p>
+      <p class="save-error" id="pin-edit-status"></p>
     </div>
   </div>
 

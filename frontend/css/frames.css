@@ -223,28 +223,6 @@
     min-height: 0;
 }
 
-.result-modal-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    z-index: 999;
-}
-
-.result.modal-mode {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    margin: 0;
-    width: 90%;
-    max-width: 640px;
-    max-height: 90vh;
-    overflow-y: auto;
-    z-index: 1000;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-}
-
 #result-close-btn {
     color: var(--text-muted);
     font-size: 20px;

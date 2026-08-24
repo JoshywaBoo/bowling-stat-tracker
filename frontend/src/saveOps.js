@@ -1,7 +1,7 @@
 // saveOps.js
 
 import {
-    players, setPlayers, parseFrames, parseAnnotatedFrameString,
+    players, setPlayers, parseFrames,
     annotateFrameWithSplits, validateGame, renderEditableFrames
 } from './frames.js';
 import { formatDateTimeInput } from './format.js';
@@ -10,9 +10,8 @@ import { API_BASE, resultThumb, playerRowsEl } from './main.js';
 import { showLoggedOut } from './auth.js';
 import { loadHistory } from './history.js';
 import {
-    uploadQueue, queueIndex, queueSuspendedForEdit, setQueueSuspendedForEdit,
-    showQueueItem, pendingRetry, retryCurrentUpload, fileInput, thumbFilename,
-    bumpQueueRequestToken, setStatus
+    uploadQueue, queueIndex, showQueueItem, pendingRetry, retryCurrentUpload, 
+    fileInput, thumbFilename, bumpQueueRequestToken, setStatus
 } from './uploadQueue.js';
 
 const saveError = document.getElementById('save-error');
@@ -23,11 +22,8 @@ export const discardBtn = document.getElementById('discard-btn');
 export const editedDateTimeInput = document.getElementById('edited-datetime');
 export const thumbRow = document.querySelector('.thumb-row');
 
-const resultModalBackdrop = document.getElementById('result-modal-backdrop');
-const resultCloseBtn = document.getElementById('result-close-btn');
-
 let pendingUpload = null;
-let pendingEdit = null; // { gameId }
+let pendingEdit = null;
 
 export function setPendingUpload(value) {
     pendingUpload = value;
@@ -45,12 +41,10 @@ export function resetResultPanel() {
     saveBtn.disabled = false;
     discardBtn.disabled = false;
     setPendingUpload(null);
-    setPendingEdit(null);
     setPlayers([]);
     playerRowsEl.innerHTML = '';
     playerRowsEl.classList.remove('hide-checkboxes');
     resultEl.classList.remove('visible');
-    closeResultModal();
     saveError.textContent = '';
     fileInput.value = '';
     editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
@@ -92,34 +86,6 @@ async function pumpSaveOpQueue() {
     saveOpRunning = false;
 }
 
-export function openGameForEditing(game) {
-    const suspendQueue = uploadQueue.length > 0 && queueIndex < uploadQueue.length;
-    resetResultPanel();
-    setQueueSuspendedForEdit(suspendQueue);
-    setPendingEdit({ gameId: game.id });
-    const parsed = parseAnnotatedFrameString(game.frame_string);
-    setPlayers([{
-        name: game.player_name || '',
-        rollSymbols: parsed.rollSymbols,
-        pendingCursor: null,
-        selected: true,
-        splitFrames: parsed.splitFrames,
-    }]);
-    playerRowsEl.classList.add('hide-checkboxes');
-    editedDateTimeInput.value = formatDateTimeInput(game.created_at);
-    renderEditableFrames();
-    resultThumb.removeAttribute('src');
-    thumbFilename.textContent = '';
-    thumbRow.style.display = 'none';
-    resultEl.classList.add('visible');
-    resultEl.classList.add('modal-mode');
-    resultModalBackdrop.style.display = 'block';
-    saveBtn.textContent = 'Save changes';
-    discardBtn.textContent = 'Cancel';
-    setStatus('');
-    document.getElementById('queue-progress').textContent = 'Editing a past game';
-}
-
 export async function deleteGameById(gameId) {
     try {
         const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
@@ -131,24 +97,10 @@ export async function deleteGameById(gameId) {
             setStatus('Could not delete that game.', true);
             return;
         }
-        // If this game happened to be open in the edit panel, close it too.
-        if (pendingEdit && pendingEdit.gameId === gameId) {
-            if (queueSuspendedForEdit) {
-                setQueueSuspendedForEdit(false);
-                showQueueItem(queueIndex);
-            } else {
-                resetResultPanel();
-            }
-        }
         await loadHistory();
     } catch {
         setStatus('Could not delete that game.', true);
     }
-}
-
-export function closeResultModal() {
-    resultEl.classList.remove('modal-mode');
-    resultModalBackdrop.style.display = 'none';
 }
 
 saveBtn.addEventListener('click', () => {
@@ -159,7 +111,7 @@ saveBtn.addEventListener('click', () => {
         return;
     }
 
-    if (!pendingUpload && !pendingEdit) return;
+    if (!pendingUpload) return;
     saveError.textContent = '';
 
     if (pendingEdit) {
@@ -183,14 +135,8 @@ saveBtn.addEventListener('click', () => {
         const createdAtValue = editedDateTimeInput.value
             ? new Date(editedDateTimeInput.value).toISOString()
             : null;
-        const wasQueueSuspended = queueSuspendedForEdit;
 
-        if (wasQueueSuspended) {
-            setQueueSuspendedForEdit(false);
-            showQueueItem(queueIndex); // re-enables the buttons once it renders
-        } else {
-            resetResultPanel(); // also re-enables the buttons
-        }
+        resetResultPanel(); // also re-enables the buttons
 
         enqueueSaveOp(async () => {
             const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
@@ -263,22 +209,9 @@ discardBtn.addEventListener('click', () => {
     saveBtn.disabled = true;
     discardBtn.disabled = true;
 
-    if (pendingEdit) {
-        if (queueSuspendedForEdit) {
-            setQueueSuspendedForEdit(false);
-            showQueueItem(queueIndex);
-        } else {
-            resetResultPanel();
-        }
-        return;
-    }
     if (uploadQueue.length) {
         showQueueItem(queueIndex + 1);
     } else {
         resetResultPanel();
     }
-});
-
-resultCloseBtn.addEventListener('click', () => {
-    discardBtn.click();
 });

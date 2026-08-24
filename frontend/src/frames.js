@@ -596,7 +596,7 @@ export function calculateBowlingScore(frameString) {
 
 document.addEventListener('keydown', (e) => {
     const input = e.target;
-    if (!input.classList.contains('frame-input')) return;
+    if (!input.classList.contains('frame-input') || input.classList.contains('edit-game-input')) return;
 
     const playerIdx = parseInt(input.dataset.player, 10);
     const player = players[playerIdx];
