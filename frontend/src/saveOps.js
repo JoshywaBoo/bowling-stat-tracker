@@ -20,9 +20,11 @@ const saveError = document.getElementById('save-error');
 export const resultEl = document.getElementById('result');
 export const saveBtn = document.getElementById('save-btn');
 export const discardBtn = document.getElementById('discard-btn');
-export const deleteBtn = document.getElementById('delete-btn');
 export const editedDateTimeInput = document.getElementById('edited-datetime');
 export const thumbRow = document.querySelector('.thumb-row');
+
+const resultModalBackdrop = document.getElementById('result-modal-backdrop');
+const resultCloseBtn = document.getElementById('result-close-btn');
 
 let pendingUpload = null;
 let pendingEdit = null; // { gameId }
@@ -48,12 +50,12 @@ export function resetResultPanel() {
     playerRowsEl.innerHTML = '';
     playerRowsEl.classList.remove('hide-checkboxes');
     resultEl.classList.remove('visible');
+    closeResultModal();
     saveError.textContent = '';
     fileInput.value = '';
     editedDateTimeInput.value = formatDateTimeInput(new Date().toISOString());
     saveBtn.textContent = 'Save game';
     discardBtn.textContent = 'Discard';
-    deleteBtn.style.display = 'none';
     thumbRow.style.display = '';
     if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
@@ -110,9 +112,10 @@ export function openGameForEditing(game) {
     thumbFilename.textContent = '';
     thumbRow.style.display = 'none';
     resultEl.classList.add('visible');
+    resultEl.classList.add('modal-mode');
+    resultModalBackdrop.style.display = 'block';
     saveBtn.textContent = 'Save changes';
     discardBtn.textContent = 'Cancel';
-    deleteBtn.style.display = '';
     setStatus('');
     document.getElementById('queue-progress').textContent = 'Editing a past game';
 }
@@ -141,6 +144,11 @@ export async function deleteGameById(gameId) {
     } catch {
         setStatus('Could not delete that game.', true);
     }
+}
+
+export function closeResultModal() {
+    resultEl.classList.remove('modal-mode');
+    resultModalBackdrop.style.display = 'none';
 }
 
 saveBtn.addEventListener('click', () => {
@@ -271,35 +279,6 @@ discardBtn.addEventListener('click', () => {
     }
 });
 
-deleteBtn.addEventListener('click', async () => {
-    if (deleteBtn.disabled || !pendingEdit) return;
-
-    const gameId = pendingEdit.gameId;
-    deleteBtn.disabled = true;
-    saveBtn.disabled = true;
-    discardBtn.disabled = true;
-
-    try {
-        const res = await fetch(`${API_BASE}/api/games/${gameId}`, {
-            method: 'DELETE',
-            credentials: 'include',
-        });
-        if (res.status === 401) { showLoggedOut(); return; }
-        if (!res.ok) {
-            setStatus('Could not delete that game.', true);
-            return;
-        }
-
-        if (queueSuspendedForEdit) {
-            setQueueSuspendedForEdit(false);
-            showQueueItem(queueIndex);
-        } else {
-            resetResultPanel();
-        }
-        await loadHistory();
-    } catch {
-        setStatus('Could not delete that game.', true);
-    } finally {
-        deleteBtn.disabled = false;
-    }
+resultCloseBtn.addEventListener('click', () => {
+    discardBtn.click();
 });

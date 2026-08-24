@@ -197,7 +197,18 @@ function handleHistoryListClick(e) {
     const dotsBtn = e.target.closest('.btn-menu-dots');
     if (dotsBtn) {
         e.stopPropagation();
-        openHistoryMenu(dotsBtn, Number(dotsBtn.dataset.gameId));
+        const gameId = Number(dotsBtn.dataset.gameId);
+        openHistoryMenu(dotsBtn, gameId);
+
+        const menuIsOpen = activeHistoryMenuGameId === gameId && historyItemDropdown.style.display !== 'none';
+        const item = dotsBtn.closest('.history-item');
+        const listEl = item?.closest('#history-list, #player-detail-history');
+
+        if (menuIsOpen && listEl) {
+            expandGame(listEl, gameId);
+        } else {
+            closeOpenExpand();
+        }
         return;
     }
 
@@ -262,7 +273,8 @@ historyDropdownDelete.addEventListener('click', async () => {
 
 document.addEventListener('click', (e) => {
     closeHistoryMenu();
-    if (openExpandEl && !openExpandEl.closest('.history-item')?.contains(e.target)) {
+    const insideEditModal = e.target.closest('#pin-edit-modal-overlay, #result, #result-modal-backdrop');
+    if (openExpandEl && !insideEditModal && !openExpandEl.closest('.history-item')?.contains(e.target)) {
         closeOpenExpand();
     }
 });

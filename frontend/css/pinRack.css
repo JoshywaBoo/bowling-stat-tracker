@@ -145,6 +145,7 @@ button.frame-chip:hover {
 
 #pin-edit-close-btn:hover {
     color: var(--amber);
+    text-decoration: none;
 }
 
 .pin-edit-modal #pin-edit-frame-string {

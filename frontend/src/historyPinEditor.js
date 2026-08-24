@@ -21,7 +21,6 @@ import { createFrameEditor, markSplitIfNeeded, isFrame10Complete } from './frame
 const overlay = document.getElementById('pin-edit-modal-overlay');
 const pinRackContainer = document.getElementById('pin-edit-pin-rack');
 const readoutEl = document.getElementById('pin-edit-readout');
-const resetBtn = document.getElementById('pin-edit-reset-btn');
 const confirmBtn = document.getElementById('pin-edit-confirm-btn');
 const frameCancelBtn = document.getElementById('pin-edit-frame-cancel-btn');
 const frameStringEl = document.getElementById('pin-edit-frame-string');
@@ -264,18 +263,6 @@ confirmBtn.addEventListener('click', () => {
 
 frameCancelBtn.addEventListener('click', () => {
     frameEditor.cancel();
-    render();
-});
-
-resetBtn.addEventListener('click', () => {
-    rollSymbols = [];
-    pinHistory = [];
-    rackAtRollStart = allPinsStanding();
-    standingPins = allPinsStanding();
-    gameDone = false;
-    frameEditor.reset();
-    splitFrames = {};
-    statusEl.textContent = '';
     render();
 });
 

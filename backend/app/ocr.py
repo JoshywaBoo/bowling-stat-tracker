@@ -216,5 +216,5 @@ if __name__ == "__main__":
 
     img_bytes = to_png_bytes(raw_bytes) if not path.lower().endswith(".png") else raw_bytes
 
-    for player in read_scoreboard_multiplayer(img_bytes):
-        print(player)
+    # for player in read_scoreboard_multiplayer(img_bytes):
+    #     print(player)

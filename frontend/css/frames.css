@@ -208,8 +208,7 @@
 
 /* Shape/sizing for .btn now lives in base.css (.btn, .btn-pill).
    This just widens Discard/Delete specifically within the result panel. */
-.result-actions .btn-discard,
-.result-actions .btn-delete {
+.result-actions .btn-discard {
     min-width: 140px;
 }
 
@@ -222,4 +221,47 @@
     color: var(--danger);
     margin-top: 12px;
     min-height: 0;
+}
+
+.result-modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 999;
+}
+
+.result.modal-mode {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    width: 90%;
+    max-width: 640px;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+#result-close-btn {
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1;
+}
+
+#result-close-btn:hover {
+    color: var(--amber);
+    text-decoration: none;
+}
+
+.btn-action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.btn-action-row .btn-discard {
+    min-width: 140px;
 }
