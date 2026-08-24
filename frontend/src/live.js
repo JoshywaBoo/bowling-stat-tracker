@@ -366,7 +366,13 @@ editCancelBtn.addEventListener('click', () => {
     cancelFrameEdit();
 });
 
-resetBtn.addEventListener('click', () => {
+resetBtn.addEventListener('click', async () => {
+
+    if (rollSymbols.length > 0) {
+        const confirmed = await showConfirmModal('Reset the current game? This will clear all rolls entered so far.');
+        if (!confirmed) return;
+    }
+
     rollSymbols = [];
     pinHistory = [];
     rackAtRollStart = allPinsStanding();

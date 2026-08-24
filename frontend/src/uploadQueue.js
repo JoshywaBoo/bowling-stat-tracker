@@ -7,7 +7,8 @@ import { formatDateTimeInput } from './format.js';
 import { loadHistory } from './history.js';
 import {
     resetResultPanel, setPendingUpload, setPendingEdit,
-    resultEl, saveBtn, discardBtn, deleteBtn, thumbRow, editedDateTimeInput
+    resultEl, saveBtn, discardBtn, thumbRow, editedDateTimeInput,
+    closeResultModal,
 } from './saveOps.js';
 
 const dropzone = document.getElementById('dropzone');
@@ -138,6 +139,7 @@ export async function showQueueItem(index) {
     if (index >= uploadQueue.length) {
         document.getElementById('queue-progress').textContent = '';
         resultEl.classList.remove('visible');
+        closeResultModal();
         setStatus('');
         uploadQueue = [];
         queueIndex = 0;
@@ -153,13 +155,13 @@ export async function showQueueItem(index) {
 
     setPendingUpload(null);
     setPendingEdit(null);            // resuming the queue always ends any pending edit
+    closeResultModal(); 
     setPendingRetry(null);           // clear any stale retry state from a previous failed item
     setPlayers([]);
     playerRowsEl.innerHTML = '';
     playerRowsEl.classList.remove('hide-checkboxes'); // make sure checkboxes come back for multi-player queue items
     saveBtn.textContent = 'Save game';   // undo "Save changes" label left over from editing
     discardBtn.textContent = 'Discard';  // undo "Cancel" label left over from editing
-    deleteBtn.style.display = 'none';    // hide the delete button for edit menu
     if (resultThumb.src && resultThumb.src.startsWith('blob:')) {
         URL.revokeObjectURL(resultThumb.src);
     }
