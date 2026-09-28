@@ -93,6 +93,13 @@ export function createFrameEditor(host) {
         editStandingPins = allPinsStanding();
     }
 
+    function prefillFromOriginal(rollIdx, rack) {
+        if (rollIdx >= editOriginalLength) return [...rack];
+        const knocked = host.getPinHistory()[editStartOffset + rollIdx];
+        if (!knocked) return [...rack];
+        return rack.map((isUp, i) => isUp && !knocked.includes(i + 1));
+    }
+
     function isActive() {
         return editingFrameIndex !== null;
     }
@@ -151,8 +158,7 @@ export function createFrameEditor(host) {
         // to reconstruct a fake layout from the roll symbol. This is what
         // makes "hit Confirm once to replay roll 1 unchanged" show the
         // real pins instead of a lowest-numbered-first guess.
-        const roll1Knocked = pinHistory[editStartOffset] || [];
-        editStandingPins = editRackAtRollStart.map((_, i) => !roll1Knocked.includes(i + 1));
+        editStandingPins = prefillFromOriginal(0, editRackAtRollStart);
 
         return true;
     }
@@ -264,7 +270,7 @@ export function createFrameEditor(host) {
         const justCleared = symbol === 'X' || symbol === '/';
         const nextRack = (!editIsFrame10 || !justCleared) ? [...editStandingPins] : allPinsStanding();
         editRackAtRollStart = nextRack;
-        editStandingPins = [...nextRack];
+        editStandingPins = prefillFromOriginal(editRollSymbols.length, nextRack);
         return { committed: false };
     }
 
