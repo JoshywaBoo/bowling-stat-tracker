@@ -25,3 +25,10 @@ export function formatDateTimeInput(iso) {
         return '';
     }
 }
+
+// ISO timestamp for "now", truncated to the minute (seconds and ms zeroed).
+export function nowIsoNoSeconds() {
+    const d = new Date();
+    d.setSeconds(0, 0);
+    return d.toISOString();
+}

@@ -9,6 +9,7 @@ import { API_BASE, showConfirmModal } from './main.js';
 import { loadHistory } from './history.js';
 import { showLoggedOut } from './auth.js';
 import { createFrameEditor, markSplitIfNeeded, isFrame10Complete } from './frameEditor.js';
+import { nowIsoNoSeconds } from './format.js';
 
 const pinRackContainer = document.getElementById('pin-rack');
 const readoutEl = document.getElementById('pin-rack-readout');
@@ -22,6 +23,8 @@ const frameStringEl = document.getElementById('live-frame-string');
 const playerNameInput = document.getElementById('live-player-name');
 const saveBtn = document.getElementById('live-save-btn');
 const saveStatusEl = document.getElementById('live-save-status');
+const dateTimeInput = document.getElementById('live-datetime');
+const dateTimeClearBtn = document.getElementById('live-datetime-clear');
 
 // ---- live-entry state ----
 // rollSymbols mirrors the same format frames.js/parseFrames expects
@@ -381,6 +384,7 @@ resetBtn.addEventListener('click', async () => {
     frameEditor.reset();
     editingSavedGameId = null;
     splitFrames = {};
+    dateTimeInput.value = '';
     saveStatusEl.textContent = '';
     clearLiveGameState();
     render();
@@ -404,9 +408,14 @@ liveBackBtn.addEventListener('click', () => {
     editingSavedGameId = null;
     splitFrames = {};
     playerNameInput.value = '';
+    dateTimeInput.value = '';
     saveStatusEl.textContent = '';
     clearLiveGameState();
     render();
+});
+
+dateTimeClearBtn.addEventListener('click', () => {
+    dateTimeInput.value = '';
 });
 
 saveBtn.addEventListener('click', async () => {
@@ -425,6 +434,9 @@ saveBtn.addEventListener('click', async () => {
 
     try {
         const url = isEdit ? `${API_BASE}/api/games/${editingSavedGameId}` : `${API_BASE}/api/games`;
+        const pickedDate = dateTimeInput.value
+            ? new Date(dateTimeInput.value).toISOString()
+            : null;
         const body = isEdit
             ? {
                 frame_string: frameString,
@@ -437,7 +449,7 @@ saveBtn.addEventListener('click', async () => {
                 frame_string: frameString,
                 pin_history: pinHistory,
                 player_name: playerNameInput.value || null,
-                created_at: new Date().toISOString(),
+                created_at: pickedDate ?? nowIsoNoSeconds(),
                 file_name: null,
             };
 
@@ -460,6 +472,7 @@ saveBtn.addEventListener('click', async () => {
         editingSavedGameId = null;
         splitFrames = {};
         playerNameInput.value = '';
+        dateTimeInput.value = '';
         clearLiveGameState();
         saveStatusEl.textContent = 'Saved!';
         setTimeout(() => {
