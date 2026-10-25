@@ -20,7 +20,6 @@ const strikeBtn = document.getElementById('pin-rack-strike-btn');
 const invertBtn = document.getElementById('pin-rack-invert-btn');
 const liveBackBtn = document.getElementById('live-back-btn');
 const frameStringEl = document.getElementById('live-frame-string');
-const playerNameInput = document.getElementById('live-player-name');
 const saveBtn = document.getElementById('live-save-btn');
 const saveStatusEl = document.getElementById('live-save-status');
 const dateTimeInput = document.getElementById('live-datetime');
@@ -256,7 +255,6 @@ export function loadGameForEditing(game) {
         standingPins = allPinsStanding();
         gameDone = true;
         frameEditor.reset();
-        playerNameInput.value = game.player_name || '';
         saveStatusEl.textContent = '';
         clearLiveGameState(); // this loaded game replaces whatever live-entry state was persisted
         render();
@@ -407,7 +405,6 @@ liveBackBtn.addEventListener('click', () => {
     frameEditor.reset();
     editingSavedGameId = null;
     splitFrames = {};
-    playerNameInput.value = '';
     dateTimeInput.value = '';
     saveStatusEl.textContent = '';
     clearLiveGameState();
@@ -441,14 +438,14 @@ saveBtn.addEventListener('click', async () => {
             ? {
                 frame_string: frameString,
                 pin_history: pinHistory,
-                player_name: playerNameInput.value || null,
+                player_name: null,
                 created_at: null, // unchanged — live pin-edit has no date field of its own
             }
             : {
                 image_key: '',
                 frame_string: frameString,
                 pin_history: pinHistory,
-                player_name: playerNameInput.value || null,
+                player_name: null,
                 created_at: pickedDate ?? nowIsoNoSeconds(),
                 file_name: null,
             };
@@ -471,7 +468,6 @@ saveBtn.addEventListener('click', async () => {
         frameEditor.reset();
         editingSavedGameId = null;
         splitFrames = {};
-        playerNameInput.value = '';
         dateTimeInput.value = '';
         clearLiveGameState();
         saveStatusEl.textContent = 'Saved!';

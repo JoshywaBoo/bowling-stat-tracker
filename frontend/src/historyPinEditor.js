@@ -25,7 +25,6 @@ const readoutEl = document.getElementById('pin-edit-readout');
 const confirmBtn = document.getElementById('pin-edit-confirm-btn');
 const frameCancelBtn = document.getElementById('pin-edit-frame-cancel-btn');
 const frameStringEl = document.getElementById('pin-edit-frame-string');
-const playerNameInput = document.getElementById('pin-edit-player-name');
 const dateTimeInput = document.getElementById('pin-edit-datetime');
 const saveBtn = document.getElementById('pin-edit-save-btn');
 const discardBtn = document.getElementById('pin-edit-discard-btn');
@@ -63,7 +62,6 @@ export function openPinEditModal(game) {
     const loadedFrames = parseFrames(rollSymbols);
     gameDone = loadedFrames.length >= 10 ? isFrame10Complete(loadedFrames[9].split('')) : false;
     frameEditor.reset();
-    playerNameInput.value = game.player_name || '';
     dateTimeInput.value = game.created_at ? formatDateTimeInput(game.created_at) : '';
     statusEl.textContent = '';
     saveBtn.disabled = false;
@@ -295,7 +293,7 @@ saveBtn.addEventListener('click', async () => {
             body: JSON.stringify({
                 frame_string: frameString,
                 pin_history: pinHistory,
-                player_name: playerNameInput.value || null,
+                player_name: null,
                 created_at: createdAtValue,
             }),
         });
