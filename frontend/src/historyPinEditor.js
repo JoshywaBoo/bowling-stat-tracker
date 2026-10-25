@@ -17,6 +17,7 @@ import { loadHistory } from './history.js';
 import { showLoggedOut } from './auth.js';
 import { knockedPinNumbers, isFirstRollOfFrame, advanceAfterRoll } from './live.js';
 import { createFrameEditor, markSplitIfNeeded, isFrame10Complete } from './frameEditor.js';
+import { formatDateTimeInput } from './format.js';
 
 const overlay = document.getElementById('pin-edit-modal-overlay');
 const pinRackContainer = document.getElementById('pin-edit-pin-rack');
@@ -25,6 +26,7 @@ const confirmBtn = document.getElementById('pin-edit-confirm-btn');
 const frameCancelBtn = document.getElementById('pin-edit-frame-cancel-btn');
 const frameStringEl = document.getElementById('pin-edit-frame-string');
 const playerNameInput = document.getElementById('pin-edit-player-name');
+const dateTimeInput = document.getElementById('pin-edit-datetime');
 const saveBtn = document.getElementById('pin-edit-save-btn');
 const discardBtn = document.getElementById('pin-edit-discard-btn');
 const closeBtn = document.getElementById('pin-edit-close-btn');
@@ -62,6 +64,7 @@ export function openPinEditModal(game) {
     gameDone = loadedFrames.length >= 10 ? isFrame10Complete(loadedFrames[9].split('')) : false;
     frameEditor.reset();
     playerNameInput.value = game.player_name || '';
+    dateTimeInput.value = game.created_at ? formatDateTimeInput(game.created_at) : '';
     statusEl.textContent = '';
     saveBtn.disabled = false;
     overlay.style.display = 'flex';
@@ -75,6 +78,7 @@ function closeModal() {
     pinHistory = [];
     frameEditor.reset();
     splitFrames = {};
+    dateTimeInput.value = '';
 }
 
 // An edit only ever commits once its frame is fully complete, so after
@@ -273,6 +277,10 @@ saveBtn.addEventListener('click', async () => {
         return;
     }
 
+    const createdAtValue = dateTimeInput.value
+        ? new Date(dateTimeInput.value).toISOString()
+        : null;
+
     const frameString = parseFrames(rollSymbols)
         .map((f, idx) => annotateFrameWithSplits(f, splitFrames[idx] || []))
         .join(' ');
@@ -288,7 +296,7 @@ saveBtn.addEventListener('click', async () => {
                 frame_string: frameString,
                 pin_history: pinHistory,
                 player_name: playerNameInput.value || null,
-                created_at: null,
+                created_at: createdAtValue,
             }),
         });
         if (res.status === 401) { showLoggedOut(); return; }
