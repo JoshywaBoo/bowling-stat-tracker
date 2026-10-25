@@ -66,9 +66,3 @@
 .hide-checkboxes .player-select {
     display: none;
 }
-
-#live-player-name {
-    display: block;
-    max-width: none;
-    margin: 16px 0 8px;
-}
